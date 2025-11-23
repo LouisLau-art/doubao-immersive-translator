@@ -209,6 +209,13 @@ function App() {
     }
   };
 
+  const handleReuseHistory = (entry) => {
+    setInputText(entry.sourceText);
+    setTargetLang(entry.targetLang);
+    setSourceLang(entry.sourceLang);
+    setStatusMessage('已载入历史记录，准备翻译');
+  };
+
   const inputFontStyle = useMemo(
     () => ({
       fontSize: `${fontSize}px`,
@@ -218,70 +225,67 @@ function App() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <header className="border-b border-gray-900 bg-gray-950/80 px-6 py-5 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2">
-          <p className="text-sm uppercase tracking-widest text-sky-400">Doubao Translator</p>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-white">沉浸式翻译工作台</h1>
-              <p className="text-sm text-gray-400">Volcengine Doubao 翻译模型 · Markdown & KaTeX 渲染</p>
-            </div>
-            <div className="flex items-center gap-4 text-sm text-gray-400">
-              <div>源语言: <span className="text-white">{getLabel(sourceLang)}</span></div>
-              <div>目标语言: <span className="text-white">{getLabel(targetLang)}</span></div>
+    <div className="min-h-screen bg-[#121212] text-[#e0e0e0] font-['PingFang_SC','Noto_Sans_SC','Maple_Mono_NF_CN',sans-serif]">
+      <div className="mx-auto flex min-h-screen w-[95%] max-w-[1920px] flex-col">
+        <header className="border-b border-[#333] bg-[#1e1e1e] px-10 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
+          <div className="flex flex-col gap-3">
+            <p className="text-xs uppercase tracking-[0.75em] text-[#667eea]">Doubao Translator</p>
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-semibold text-white">ARK 豆包翻译器</h1>
+                <p className="text-sm text-[#9aa0a6]">沉浸式双栏体验 · Markdown &amp; KaTeX 支持 · Volcengine Doubao</p>
+              </div>
+              <div className="flex items-center gap-6 text-sm text-[#9aa0a6]">
+                <span>源语言：<strong className="text-white">{getLabel(sourceLang)}</strong></span>
+                <span>目标语言：<strong className="text-white">{getLabel(targetLang)}</strong></span>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <section className="flex flex-col rounded-2xl border border-gray-900 bg-gray-900/60 shadow-xl shadow-black/30">
-            <div className="flex items-center justify-between border-b border-gray-900 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-gray-400" htmlFor="sourceLang">
-                  源语言
-                </label>
-                <select
-                  id="sourceLang"
-                  className="rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-100 focus:border-sky-500 focus:outline-none"
-                  value={sourceLang}
-                  onChange={(event) => setSourceLang(event.target.value)}
+        <div className="flex flex-1 flex-col bg-[#1e1e1e]">
+          <div className="translation-area flex flex-1 min-h-0">
+            <section className="input-section flex min-w-0 flex-1 flex-col border-r border-[#333] p-6">
+              <div className="section-header mb-6 flex items-center justify-between border-b border-[#333] pb-4">
+                <div className="language-selector flex items-center gap-4 text-sm">
+                  <span className="lang-label text-base font-semibold">源语言</span>
+                  <select
+                    id="sourceLang"
+                    className="rounded-lg border border-[#333] bg-[#2d2d2d] px-4 py-2 text-sm focus:border-[#667eea] focus:outline-none"
+                    value={sourceLang}
+                    onChange={(event) => setSourceLang(event.target.value)}
+                  >
+                    {LANGUAGE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSwapLanguages}
+                  className="swap-btn inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#333] text-white transition hover:bg-[#444]"
+                  title="交换语言"
                 >
-                  {LANGUAGE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  ⇄
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={handleSwapLanguages}
-                className="rounded-full border border-gray-800 bg-gray-900 px-2 py-1 text-sm text-gray-300 transition hover:border-sky-500 hover:text-white"
-                title="交换语言"
-              >
-                ⇄
-              </button>
-            </div>
-
-            <div className="flex flex-1 flex-col gap-4 px-6 py-4">
               <textarea
-                className="min-h-[360px] w-full resize-none rounded-xl border border-gray-800 bg-gray-950/80 p-4 text-gray-100 placeholder-gray-500 focus:border-sky-500 focus:outline-none"
+                className="text-area min-h-[420px] w-full flex-1 resize-none rounded-lg border-2 border-[#333] bg-[#2d2d2d] p-5 text-base text-[#e0e0e0] placeholder:text-[#888] shadow-[0_12px_35px_rgba(0,0,0,0.45)] focus:border-[#667eea] focus:outline-none"
                 placeholder="请输入要翻译的文本...\n\n提示：输入文本后 0.5s 内自动翻译，无需按钮。\n支持 LaTeX 数学公式：$...$ 行内，$$...$$ 块级。"
                 value={inputText}
                 onChange={(event) => setInputText(event.target.value)}
                 style={inputFontStyle}
               />
 
-              <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-gray-400">
-                <div>
+              <div className="input-footer mt-4 flex flex-wrap items-center justify-between gap-4 text-sm text-[#9aa0a6]">
+                <div className="char-count text-xs uppercase tracking-[0.2em]">
                   <span className="text-white">{charCount}</span> 字符
                 </div>
-                <div className="flex items-center gap-3">
-                  <label htmlFor="fontSizeSlider" className="text-sm">
+                <div className="font-size-control flex items-center gap-4">
+                  <label htmlFor="fontSizeSlider" className="text-sm font-semibold text-[#e0e0e0]">
                     字体大小
                   </label>
                   <input
@@ -291,103 +295,133 @@ function App() {
                     max="26"
                     value={fontSize}
                     onChange={(event) => setFontSize(Number(event.target.value))}
-                    className="accent-sky-500"
+                    className="gradient-slider"
                   />
-                  <span className="text-white">{fontSize}px</span>
+                  <span className="font-size-value w-12 text-right text-sm text-[#e0e0e0]">{fontSize}px</span>
                 </div>
                 <button
                   type="button"
                   onClick={handleClear}
-                  className="rounded-lg border border-gray-800 px-3 py-1 text-sm text-gray-300 transition hover:border-red-500 hover:text-white"
+                  className="clear-btn rounded-full border border-transparent bg-gradient-to-r from-[#667eea] to-[#764ba2] px-6 py-2 text-sm font-semibold text-white shadow-[0_10px_25px_rgba(102,126,234,0.35)] transition hover:opacity-90"
                 >
                   清空
                 </button>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section className="flex flex-col rounded-2xl border border-gray-900 bg-gray-900/60 shadow-xl shadow-black/30">
-            <div className="flex items-center justify-between border-b border-gray-900 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-gray-400" htmlFor="targetLang">
-                  目标语言
-                </label>
-                <select
-                  id="targetLang"
-                  className="rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-100 focus:border-sky-500 focus:outline-none"
-                  value={targetLang}
-                  onChange={(event) => setTargetLang(event.target.value)}
-                >
-                  {TARGET_LANGUAGE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleCopy}
-                disabled={!translation}
-                className="rounded-lg border border-gray-800 px-3 py-1 text-sm text-gray-300 transition hover:border-sky-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                title="复制翻译结果"
-              >
-                {copied ? '已复制 ✓' : '复制'}
-              </button>
-            </div>
-
-            <div className="relative flex-1 overflow-hidden px-6 py-4">
-              {isTranslating && (
-                <div className="pointer-events-none absolute inset-0 flex items-start justify-end pr-6 pt-4">
-                  <div className="flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs text-sky-300">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-sky-400" />
-                    翻译中…
-                  </div>
+            <section className="output-section flex min-w-0 flex-1 flex-col p-6">
+              <div className="section-header mb-6 flex items-center justify-between border-b border-[#333] pb-4">
+                <div className="language-selector flex items-center gap-4 text-sm">
+                  <span className="lang-label text-base font-semibold">目标语言</span>
+                  <select
+                    id="targetLang"
+                    className="rounded-lg border border-[#333] bg-[#2d2d2d] px-4 py-2 text-sm focus:border-[#667eea] focus:outline-none"
+                    value={targetLang}
+                    onChange={(event) => setTargetLang(event.target.value)}
+                  >
+                    {TARGET_LANGUAGE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
-
-              <div className="markdown-body min-h-[360px] rounded-xl border border-gray-800 bg-gray-950/70 px-4 py-4" style={inputFontStyle}>
-                <ReactMarkdown
-                  remarkPlugins={[remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                  className="prose prose-invert max-w-none"
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  disabled={!translation}
+                  className="icon-btn inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#333] text-lg text-white transition hover:bg-[#444] disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-live="polite"
+                  title="复制翻译结果"
                 >
-                  {translation || DEFAULT_OUTPUT_MESSAGE}
-                </ReactMarkdown>
+                  {copied ? '✓' : '📋'}
+                </button>
               </div>
-            </div>
-          </section>
-        </div>
 
-        <section className="rounded-2xl border border-gray-900 bg-gray-900/50 p-6">
-          <details className="history-details" open>
-            <summary className="cursor-pointer text-lg font-medium text-white">历史记录</summary>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {history.length === 0 && <p className="text-sm text-gray-500">暂无历史记录</p>}
-              {history.map((entry) => (
-                <article key={entry.id} className="rounded-xl border border-gray-800 bg-gray-950/70 p-4 text-sm text-gray-300">
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>
-                      {getLabel(entry.sourceLang)} → {getLabel(entry.targetLang)}
-                    </span>
-                    <time dateTime={entry.timestamp}>{new Date(entry.timestamp).toLocaleString()}</time>
+              <div className="relative flex-1">
+                {isTranslating && (
+                  <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-end pr-4">
+                    <div className="mt-[-12px] flex items-center gap-2 rounded-full border border-[#667eea]/40 bg-[#667eea]/15 px-4 py-1 text-xs text-[#c3cbff] shadow-[0_10px_30px_rgba(102,126,234,0.45)]">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-[#667eea]" />
+                      翻译中…
+                    </div>
                   </div>
-                  <p className="mt-2 line-clamp-3 text-gray-400">{entry.sourceText}</p>
-                  <p className="mt-2 line-clamp-3 text-white">{entry.translatedText}</p>
-                </article>
-              ))}
-            </div>
-          </details>
-        </section>
+                )}
 
-        <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-gray-900 pt-4 text-sm text-gray-400">
-          <div>
-            状态：<span className="text-white">{statusMessage}</span>
+                <div className="markdown-body min-h-[420px] rounded-lg border-2 border-[#333] bg-[#252525] p-5 text-base leading-relaxed text-[#e0e0e0] shadow-[0_12px_35px_rgba(0,0,0,0.45)]" style={inputFontStyle}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                    className="prose prose-invert max-w-none"
+                  >
+                    {translation || DEFAULT_OUTPUT_MESSAGE}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            </section>
           </div>
-          <div>Powered by Volcengine Doubao</div>
-        </footer>
-      </main>
+
+          <section className="history-section border-t border-[#333] bg-[#1e1e1e] px-8 py-8">
+            <details className="history-details" open>
+              <summary className="flex cursor-pointer items-center gap-3 text-lg font-semibold text-white">
+                历史记录
+              </summary>
+              <div className={`history-list mt-6 flex flex-col gap-4 ${history.length === 0 ? 'empty' : ''}`}>
+                {history.length === 0 && <p className="history-empty text-sm">暂无历史记录</p>}
+                {history.map((entry) => (
+                  <article key={entry.id} className="history-item border border-[#333] bg-[#2d2d2d]">
+                    <div className="history-item-header">
+                      <div className="history-meta">
+                        {getLabel(entry.sourceLang)} → {getLabel(entry.targetLang)}
+                      </div>
+                      <time className="history-time" dateTime={entry.timestamp}>
+                        {new Date(entry.timestamp).toLocaleString()}
+                      </time>
+                    </div>
+                    <div className="history-text-block">
+                      <span className="history-text-label">原文</span>
+                      <p className="history-text">{entry.sourceText}</p>
+                    </div>
+                    <div className="history-text-block">
+                      <span className="history-text-label">译文</span>
+                      <p className="history-text">{entry.translatedText}</p>
+                    </div>
+                    <div className="history-actions">
+                      <button
+                        type="button"
+                        className="history-reuse"
+                        onClick={() => handleReuseHistory(entry)}
+                      >
+                        再次翻译
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </details>
+          </section>
+
+          <footer className="status-bar border-t border-[#333] bg-[#1e1e1e] px-8 py-4 text-sm text-[#e0e0e0]">
+            <div className="flex flex-wrap items-center justify-between gap-6">
+              <div className="auto-translate flex items-center gap-3">
+                <span className="font-semibold">自动翻译</span>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#333] bg-[#2d2d2d] px-3 py-1 text-xs text-[#a0a0a0]">
+                  <span className="relative inline-flex h-5 w-10 items-center rounded-full bg-gradient-to-r from-[#667eea] to-[#764ba2]">
+                    <span className="ml-auto mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-[#667eea]">
+                      ON
+                    </span>
+                  </span>
+                  已启用
+                </div>
+              </div>
+              <div className="font-size-control flex items-center gap-3 text-sm">
+                状态：<span className="text-white">{statusMessage}</span>
+              </div>
+              <div className="text-xs uppercase tracking-[0.4em] text-[#9aa0a6]">Powered by Volcengine Doubao</div>
+            </div>
+          </footer>
+        </div>
+      </div>
     </div>
   );
 }

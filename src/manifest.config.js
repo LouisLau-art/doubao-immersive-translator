@@ -3,7 +3,7 @@ const manifest = {
   name: 'Doubao Immersive Translator',
   description: 'Inline web page translations using Volcengine Doubao Seed Translation API.',
   version: '0.1.0',
-  permissions: ['storage', 'activeTab', 'scripting'],
+  permissions: ['storage', 'activeTab', 'scripting', 'contextMenus'],
   host_permissions: ['https://ark.cn-beijing.volces.com/*'],
   action: {
     default_popup: 'src/popup/index.html',

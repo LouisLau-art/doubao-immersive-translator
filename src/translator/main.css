@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #121212;
+  --container-bg: #1e1e1e;
+  --text-color: #e0e0e0;
+  --border-color: #333333;
+  --primary-color: #667eea;
+  --secondary-color: #764ba2;
+  --input-bg: #2d2d2d;
+  --output-bg: #252525;
+  --button-bg: #333333;
+  --button-hover: #444444;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-color);
+}
+
+.translation-area {
+  display: flex;
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.input-section,
+.output-section {
+  min-width: 0;
+  transition: flex 0.3s ease;
+}
+
+.section-header {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.language-selector select {
+  min-width: 140px;
+}
+
+.swap-btn,
+.icon-btn {
+  background: var(--button-bg);
+  border: none;
+  transition: background 0.2s ease;
+}
+
+.swap-btn:hover,
+.icon-btn:hover {
+  background: var(--button-hover);
+}
+
+.text-area,
+.markdown-body {
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
+}
+
+.clear-btn {
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.35);
+}
+
+.gradient-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 160px;
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+  outline: none;
+}
+
+.gradient-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.gradient-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.history-details summary {
+  list-style: none;
+}
+
+.history-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.history-details summary::before {
+  content: '\25B6';
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--primary-color);
+  transition: transform 0.2s ease;
+}
+
+.history-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.history-list.empty {
+  gap: 0;
+}
+
+.history-item {
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.history-text {
+  border-radius: 8px;
+}
+
+.status-bar {
+  border-top: 1px solid var(--border-color);
+}

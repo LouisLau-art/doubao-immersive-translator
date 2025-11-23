@@ -4,7 +4,7 @@ import styles from './translation.css?inline';
 
 console.log('Doubao Immersive Translator content script loaded');
 
-const BLOCK_SELECTORS = 'p, h1, h2, h3, h4, h5, h6, li';
+const BLOCK_SELECTORS = 'p, h1, h2, h3, h4, h5, h6, li, div, article, section';
 const TRANSLATION_ATTR = 'data-doubao-translation-container';
 const ORIGINAL_CLASS = 'doubao-original';
 const STATUS_ATTR = 'data-doubao-status';
@@ -13,8 +13,9 @@ const STATUS = {
   DONE: 'done'
 };
 const META_CLASS_KEYWORDS = ['time', 'date', 'stats', 'stat', 'counter', 'meta', 'timestamp'];
+const NON_TEXT_CLASS_KEYWORDS = ['nav', 'menu', 'btn', 'button', 'toolbar', 'header', 'footer', 'sidebar', 'code', 'snippet', 'avatar', 'icon', 'badge'];
 const USERNAME_CLASS_KEYWORDS = ['author', 'text-bold', 'link--primary', 'user', 'avatar', 'follow', 'f4'];
-const COMMON_SHORT_WORDS = new Set(['new', 'top', 'star', 'fork', 'edit', 'save', 'news']);
+const COMMON_SHORT_WORDS = new Set(['new', 'top', 'star', 'fork', 'edit', 'save', 'news', 'run', 'log']);
 const COMMON_WORDS = new Set([
   ...COMMON_SHORT_WORDS,
   'issues',
@@ -66,7 +67,8 @@ const isUrlLike = (text) => /^https?:\/\//i.test(text) || /^([A-Za-z]:\\|\/|\.\/
 const hasLetters = (text) => /[\p{L}]/u.test(text);
 const shouldSkipText = (text) => isUrlLike(text) || !hasLetters(text);
 const isShortNumericText = (text) => text.length < 3 && /\d/.test(text);
-const isRepoPath = (text) => /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(text);
+const repoPathRegex = /^@?[\w-]+\/[\w-]+$/;
+const isRepoPath = (text) => repoPathRegex.test(text);
 const isUsernameText = (text) => text.trim().startsWith('@');
 const camelCaseRegex = /[a-z]+[A-Z][a-z]+/;
 const snakeCaseRegex = /[a-z]+_[a-z]+/;
@@ -93,22 +95,39 @@ const hasUsernameLikeContext = (element) => {
   return false;
 };
 
+const hasDirectTextContent = (element) =>
+  Array.from(element?.childNodes ?? []).some(
+    (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()?.length > 0
+  );
+
+const isLayoutOrMetaClass = (element) => {
+  const classString = getClassString(element).toLowerCase();
+  return NON_TEXT_CLASS_KEYWORDS.some((keyword) => classString.includes(keyword));
+};
+
 const isCommonWord = (text) => COMMON_WORDS.has(text.toLowerCase());
 
 const shouldSkipTranslation = (text, element) => {
   const value = text.trim();
   if (!value) return true;
-  if (isRepoPath(value)) return true;
-  if (isUsernameText(value) || hasUsernameLikeContext(element)) return true;
+  const reasons = [];
+  if (isRepoPath(value)) reasons.push('repo-path');
+  if (isUsernameText(value) || hasUsernameLikeContext(element)) reasons.push('username');
   if (camelCaseRegex.test(value) || snakeCaseRegex.test(value) || codeSymbolRegex.test(value) || commandKeywordRegex.test(value)) {
+    reasons.push('code-like');
+  }
+  if (value.length < 2 && !COMMON_SHORT_WORDS.has(value.toLowerCase())) {
+    reasons.push('too-short');
+  }
+  if (!/\s/.test(value) && !isCommonWord(value) && !isRepoPath(value)) {
+    reasons.push('single-token');
+  }
+
+  if (reasons.length > 0) {
+    console.log('Skipping:', value, 'Reasons:', reasons.join(','), 'Element:', element.tagName, getClassString(element));
     return true;
   }
-  if (value.length < 4 && !COMMON_SHORT_WORDS.has(value.toLowerCase())) {
-    return true;
-  }
-  if (!/\s/.test(value) && !isCommonWord(value)) {
-    return true;
-  }
+
   return false;
 };
 
@@ -291,7 +310,36 @@ const mountTranslation = (element, text, targetLanguage) => {
   );
 };
 
+let currentTargetLanguage = 'zh';
+
+const isEligibleRichBlock = (element, text) => {
+  if (!element) return false;
+  const tag = element.tagName;
+  if (tag === 'DIV') {
+    if (!hasDirectTextContent(element)) {
+      console.log('Scanning element:', tag, getClassString(element), text.length, '-> no direct text nodes');
+      return false;
+    }
+    if (isLayoutOrMetaClass(element)) {
+      console.log('Scanning element:', tag, getClassString(element), text.length, '-> layout/meta class');
+      return false;
+    }
+    if (text.length < 50) {
+      console.log('Scanning element:', tag, getClassString(element), text.length, '-> text too short');
+      return false;
+    }
+  }
+  if (tag === 'SECTION' || tag === 'ARTICLE') {
+    if (!hasDirectTextContent(element) || isLayoutOrMetaClass(element) || text.length < 40) {
+      console.log('Scanning element:', tag, getClassString(element), text.length, '-> section/article filtered');
+      return false;
+    }
+  }
+  return true;
+};
+
 const translatePage = (targetLanguage = 'zh') => {
+  currentTargetLanguage = targetLanguage;
   const blocks = getBlocks();
   blocks.forEach((element) => {
     const currentStatus = getStatus(element);
@@ -301,6 +349,13 @@ const translatePage = (targetLanguage = 'zh') => {
 
     const text = element.innerText?.trim();
     if (!text || shouldSkipText(text) || isShortNumericText(text) || shouldSkipTranslation(text, element)) return;
+
+    const tag = element.tagName;
+    if (tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE') {
+      if (!isEligibleRichBlock(element, text)) {
+        return;
+      }
+    }
 
     setStatus(element, STATUS.PENDING);
     ensureOriginalWrapped(element);
@@ -315,5 +370,22 @@ chrome.runtime.onMessage.addListener((message) => {
     translatePage(targetLanguage);
   }
 });
+
+const setupMutationObserver = () => {
+  if (typeof MutationObserver === 'undefined' || !document?.body) return;
+  let timeoutId;
+  const observer = new MutationObserver(() => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      translatePage(currentTargetLanguage);
+    }, 1500);
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+};
+
+setupMutationObserver();
 
 console.info('Doubao Immersive Translator content script ready.');
