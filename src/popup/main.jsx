@@ -42,15 +42,17 @@ function Popup() {
   const [apiKey, setApiKey] = useState('');
   const [targetLanguage, setTargetLanguage] = useState('zh');
   const [displayMode, setDisplayMode] = useState(MODE_OPTIONS.BILINGUAL);
+  const [extensionEnabled, setExtensionEnabled] = useState(true);
   const [status, setStatus] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
 
   useEffect(() => {
-    chrome.storage.local.get(['doubaoApiKey', 'doubaoTargetLanguage', 'doubaoDisplayMode'], (result) => {
+    chrome.storage.local.get(['doubaoApiKey', 'doubaoTargetLanguage', 'doubaoDisplayMode', 'extensionEnabled'], (result) => {
       if (result.doubaoApiKey) setApiKey(result.doubaoApiKey);
       if (result.doubaoTargetLanguage) setTargetLanguage(result.doubaoTargetLanguage);
       if (result.doubaoDisplayMode) setDisplayMode(result.doubaoDisplayMode);
+      if (result.extensionEnabled !== undefined) setExtensionEnabled(result.extensionEnabled);
     });
   }, []);
 
@@ -63,7 +65,8 @@ function Popup() {
       await chrome.storage.local.set({
         doubaoApiKey: apiKey.trim(),
         doubaoTargetLanguage: targetLanguage,
-        doubaoDisplayMode: displayMode
+        doubaoDisplayMode: displayMode,
+        extensionEnabled: extensionEnabled
       });
       setStatus({ type: 'success', message: 'Preferences saved.' });
     } catch (error) {
@@ -104,12 +107,38 @@ function Popup() {
     );
   };
 
+  const toggleExtensionEnabled = () => {
+    setExtensionEnabled((prev) => !prev);
+  };
+
   const handleOpenTranslator = () => {
     try {
       chrome.tabs.create({ url: chrome.runtime.getURL('src/translator/index.html') });
     } catch (error) {
       console.error('Failed to open translator page:', error);
       setStatus({ type: 'error', message: '无法打开翻译工作台' });
+    }
+  };
+
+  const handleClearCache = async () => {
+    try {
+      // Send message to background to clear cache
+      chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' }, (response) => {
+        if (response?.success) {
+          setStatus({ type: 'success', message: 'Cache cleared successfully.' });
+          // Reload current tab to refresh translations
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+              chrome.tabs.reload(tabs[0].id);
+            }
+          });
+        } else {
+          setStatus({ type: 'error', message: response?.error || 'Failed to clear cache.' });
+        }
+      });
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+      setStatus({ type: 'error', message: 'Failed to clear cache.' });
     }
   };
 
@@ -124,6 +153,37 @@ function Popup() {
         </div>
 
         <form className="space-y-3" onSubmit={handleSave}>
+          <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-200">Extension Status</p>
+                <p className="text-xs text-slate-400">
+                  {extensionEnabled ? 'Translation is enabled' : 'Translation is disabled'}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={extensionEnabled}
+                onClick={toggleExtensionEnabled}
+                className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold text-white transition ${
+                  extensionEnabled
+                    ? 'border-green-600 bg-green-700 hover:border-green-500'
+                    : 'border-red-600 bg-red-700 hover:border-red-500'
+                }`}
+              >
+                <span>{extensionEnabled ? 'Enabled' : 'Disabled'}</span>
+                <span
+                  className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${
+                    extensionEnabled ? 'bg-green-400' : 'bg-red-400'
+                  }`}
+                >
+                  {extensionEnabled ? 'ON' : 'OFF'}
+                </span>
+              </button>
+            </div>
+          </div>
+
           <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
             <div className="flex items-center justify-between">
               <div>
@@ -191,18 +251,27 @@ function Popup() {
           type="button"
           className="w-full rounded-md border border-slate-700 px-4 py-2 text-sm font-semibold text-white transition hover:border-sky-500 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-70"
           onClick={handleTranslate}
-          disabled={isTranslating}
+          disabled={isTranslating || !extensionEnabled}
         >
           {isTranslating ? 'Starting…' : 'Translate This Page'}
         </button>
 
-        <button
-          type="button"
-          className="w-full rounded-md border border-slate-700 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:border-sky-500 hover:text-white"
-          onClick={handleOpenTranslator}
-        >
-          Open Full Translator ↗
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className="rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-sky-500 hover:text-sky-200"
+            onClick={handleClearCache}
+          >
+            Clear Cache
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:border-sky-500 hover:text-white"
+            onClick={handleOpenTranslator}
+          >
+            Full Translator ↗
+          </button>
+        </div>
 
         {status && (
           <p

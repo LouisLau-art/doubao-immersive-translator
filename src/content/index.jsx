@@ -4,7 +4,7 @@ import styles from './translation.css?inline';
 
 console.log('Doubao Immersive Translator content script loaded');
 
-const BLOCK_SELECTORS = 'p, h1, h2, h3, h4, h5, h6, li, div, article, section';
+const BLOCK_SELECTORS = 'p, h1, h2, h3, h4, h5, h6, li, div, article, section, div[class*="content"], div[class*="text"], div[class*="description"]';
 const TRANSLATION_ATTR = 'data-doubao-translation-container';
 const ORIGINAL_CLASS = 'doubao-original';
 const STATUS_ATTR = 'data-doubao-status';
@@ -12,8 +12,7 @@ const STATUS = {
   PENDING: 'pending',
   DONE: 'done'
 };
-const META_CLASS_KEYWORDS = ['time', 'date', 'stats', 'stat', 'counter', 'meta', 'timestamp'];
-const NON_TEXT_CLASS_KEYWORDS = ['nav', 'menu', 'btn', 'button', 'toolbar', 'header', 'footer', 'sidebar', 'code', 'snippet', 'avatar', 'icon', 'badge'];
+const TECHNICAL_CLASS_KEYWORDS = ['hljs', 'code', 'nav', 'menu', 'footer', 'button', 'input'];
 const USERNAME_CLASS_KEYWORDS = ['author', 'text-bold', 'link--primary', 'user', 'avatar', 'follow', 'f4'];
 const COMMON_SHORT_WORDS = new Set(['new', 'top', 'star', 'fork', 'edit', 'save', 'news', 'run', 'log']);
 const COMMON_WORDS = new Set([
@@ -100,9 +99,9 @@ const hasDirectTextContent = (element) =>
     (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()?.length > 0
   );
 
-const isLayoutOrMetaClass = (element) => {
+const isTechnicalClass = (element) => {
   const classString = getClassString(element).toLowerCase();
-  return NON_TEXT_CLASS_KEYWORDS.some((keyword) => classString.includes(keyword));
+  return TECHNICAL_CLASS_KEYWORDS.some((keyword) => classString.includes(keyword));
 };
 
 const isCommonWord = (text) => COMMON_WORDS.has(text.toLowerCase());
@@ -110,6 +109,14 @@ const isCommonWord = (text) => COMMON_WORDS.has(text.toLowerCase());
 const shouldSkipTranslation = (text, element) => {
   const value = text.trim();
   if (!value) return true;
+  
+  // Golden Rule: Text Density > 50 chars always wins (except code blocks)
+  const isInCodeBlock = element.closest('pre, code, textarea');
+  if (value.length > 50 && !isInCodeBlock) {
+    return false;
+  }
+  
+  // For shorter text, apply strict filtering
   const reasons = [];
   if (isRepoPath(value)) reasons.push('repo-path');
   if (isUsernameText(value) || hasUsernameLikeContext(element)) reasons.push('username');
@@ -124,7 +131,7 @@ const shouldSkipTranslation = (text, element) => {
   }
 
   if (reasons.length > 0) {
-    console.log('Skipping:', value, 'Reasons:', reasons.join(','), 'Element:', element.tagName, getClassString(element));
+    console.log(`Skipped [${reasons.join(',')}]:`, value, 'Element:', element.tagName, getClassString(element));
     return true;
   }
 
@@ -132,14 +139,8 @@ const shouldSkipTranslation = (text, element) => {
 };
 
 const matchesMetaClass = (element) => {
-  const className =
-    typeof element.className === 'string'
-      ? element.className
-      : typeof element.className?.baseVal === 'string'
-        ? element.className.baseVal
-        : Array.from(element.classList ?? []).join(' ');
-  const lower = className?.toLowerCase?.() || '';
-  return META_CLASS_KEYWORDS.some((keyword) => lower.includes(keyword));
+  // Deprecated: Use isTechnicalClass instead
+  return isTechnicalClass(element);
 };
 
 const injectDisplayModeStyles = (() => {
@@ -175,6 +176,52 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   const mode = changes.doubaoDisplayMode.newValue || MODE_OPTIONS.BILINGUAL;
   applyDisplayMode(mode);
 });
+
+// Extension enable/disable functionality
+let extensionEnabled = true;
+
+const updateExtensionState = (enabled) => {
+  extensionEnabled = enabled;
+
+  if (enabled) {
+    document.body.classList.remove('doubao-disabled');
+    console.log('Doubao Translator enabled');
+  } else {
+    document.body.classList.add('doubao-disabled');
+    console.log('Doubao Translator disabled');
+  }
+};
+
+// Check initial extension state
+chrome.storage.local.get(['extensionEnabled'], (result) => {
+  updateExtensionState(result.extensionEnabled !== false); // Default to true
+});
+
+// Listen for extension state changes
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'local' || !changes.extensionEnabled) return;
+  updateExtensionState(changes.extensionEnabled.newValue);
+});
+
+// Add CSS for disabled state
+const injectDisableStyles = (() => {
+  let injected = false;
+  return () => {
+    if (injected) return;
+    const style = document.createElement('style');
+    style.setAttribute('data-doubao-style', 'disable-state');
+    style.textContent = `
+      body.doubao-disabled [data-doubao-translation-container] {
+        display: none !important;
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+    injected = true;
+  };
+})();
+
+// Inject disable styles on load
+injectDisableStyles();
 
 const getTypographyVars = (element) => {
   const computed = window.getComputedStyle(element);
@@ -315,23 +362,32 @@ let currentTargetLanguage = 'zh';
 const isEligibleRichBlock = (element, text) => {
   if (!element) return false;
   const tag = element.tagName;
+  
+  // Skip technical classes regardless of text density
+  if (isTechnicalClass(element)) {
+    console.log(`Skipped [Technical Class]:`, tag, getClassString(element), text.length);
+    return false;
+  }
+  
+  // Golden Rule: Text Density > 50 chars always wins
+  if (text.length > 50) {
+    return true;
+  }
+  
+  // For shorter text, apply stricter heuristics
   if (tag === 'DIV') {
     if (!hasDirectTextContent(element)) {
-      console.log('Scanning element:', tag, getClassString(element), text.length, '-> no direct text nodes');
+      console.log(`Skipped [No Direct Text]:`, tag, getClassString(element), text.length);
       return false;
     }
-    if (isLayoutOrMetaClass(element)) {
-      console.log('Scanning element:', tag, getClassString(element), text.length, '-> layout/meta class');
-      return false;
-    }
-    if (text.length < 50) {
-      console.log('Scanning element:', tag, getClassString(element), text.length, '-> text too short');
+    if (text.length < 30) {
+      console.log(`Skipped [Too Short]:`, tag, getClassString(element), text.length);
       return false;
     }
   }
   if (tag === 'SECTION' || tag === 'ARTICLE') {
-    if (!hasDirectTextContent(element) || isLayoutOrMetaClass(element) || text.length < 40) {
-      console.log('Scanning element:', tag, getClassString(element), text.length, '-> section/article filtered');
+    if (!hasDirectTextContent(element) || text.length < 30) {
+      console.log(`Skipped [Section/Article Too Short]:`, tag, getClassString(element), text.length);
       return false;
     }
   }
@@ -339,29 +395,47 @@ const isEligibleRichBlock = (element, text) => {
 };
 
 const translatePage = (targetLanguage = 'zh') => {
+  // Check if extension is enabled before processing
+  if (!extensionEnabled) {
+    console.log('Translation disabled - skipping page processing');
+    return;
+  }
+
   currentTargetLanguage = targetLanguage;
   const blocks = getBlocks();
-  blocks.forEach((element) => {
+
+  // Performance: Quick filter for already processed elements
+  const unprocessedBlocks = blocks.filter((element) => {
     const currentStatus = getStatus(element);
-    if (currentStatus === STATUS.PENDING || currentStatus === STATUS.DONE) return;
-    if (hasTranslation(element)) return;
-    if (matchesMetaClass(element)) return;
-
-    const text = element.innerText?.trim();
-    if (!text || shouldSkipText(text) || isShortNumericText(text) || shouldSkipTranslation(text, element)) return;
-
-    const tag = element.tagName;
-    if (tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE') {
-      if (!isEligibleRichBlock(element, text)) {
-        return;
-      }
-    }
-
-    setStatus(element, STATUS.PENDING);
-    ensureOriginalWrapped(element);
-
-    mountTranslation(element, text, targetLanguage);
+    return currentStatus !== STATUS.PENDING && currentStatus !== STATUS.DONE;
   });
+
+  unprocessedBlocks.forEach((element) => {
+    try {
+      if (hasTranslation(element)) return;
+      if (isTechnicalClass(element)) return;
+
+      const text = element.innerText?.trim();
+      if (!text || shouldSkipText(text) || isShortNumericText(text) || shouldSkipTranslation(text, element)) return;
+
+      const tag = element.tagName;
+      if (tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE') {
+        if (!isEligibleRichBlock(element, text)) {
+          return;
+        }
+      }
+
+      setStatus(element, STATUS.PENDING);
+      ensureOriginalWrapped(element);
+
+      mountTranslation(element, text, targetLanguage);
+    } catch (error) {
+      console.error('Error processing element:', error, element);
+      // Continue processing other elements even if one fails
+    }
+  });
+
+  console.log(`Processed ${unprocessedBlocks.length} unprocessed blocks out of ${blocks.length} total`);
 };
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -370,6 +444,23 @@ chrome.runtime.onMessage.addListener((message) => {
     translatePage(targetLanguage);
   }
 });
+
+const setupScrollListener = () => {
+  if (typeof window === 'undefined') return;
+  let scrollTimeout;
+  
+  const handleScroll = () => {
+    if (scrollTimeout) {
+      clearTimeout(scrollTimeout);
+    }
+    scrollTimeout = setTimeout(() => {
+      translatePage(currentTargetLanguage);
+    }, 500); // 500ms debounce
+  };
+  
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  console.log('Scroll listener attached for translation scanning');
+};
 
 const setupMutationObserver = () => {
   if (typeof MutationObserver === 'undefined' || !document?.body) return;
@@ -387,5 +478,6 @@ const setupMutationObserver = () => {
 };
 
 setupMutationObserver();
+setupScrollListener();
 
 console.info('Doubao Immersive Translator content script ready.');

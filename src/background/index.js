@@ -96,6 +96,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // 【关键】保持通道开启，等待异步处理
   }
 
+  // Handle cache clearing
+  if (message.type === 'CLEAR_CACHE') {
+    try {
+      const cacheSize = cache.size;
+      cache.clear();
+      console.log(`🗑️ Cache cleared (${cacheSize} items)`);
+      sendResponse({ success: true, clearedItems: cacheSize });
+    } catch (error) {
+      console.error('❌ Failed to clear cache:', error);
+      sendResponse({ success: false, error: error.message });
+    }
+    return false;
+  }
+
   // 处理其他消息...
   return false;
 });
