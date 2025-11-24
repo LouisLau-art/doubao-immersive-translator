@@ -73,11 +73,11 @@ npm run watch
 
 - Popup / Page Translation
 
-  ![Popup Demo](path/to/popup-demo.png)
+  ![Popup Demo](path/to/popup-demo.jpeg)
 
 - Translator Workspace
 
-  ![Translator Workspace](path/to/translator-demo.png)
+  ![Translator Workspace](path/to/translator-demo.jpeg)
 
 ---
 
