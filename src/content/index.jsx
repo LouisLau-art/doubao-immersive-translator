@@ -35,6 +35,7 @@ const COMMON_WORDS = new Set([
   'topics'
 ]);
 const MODE_OPTIONS = {
+  ORIGINAL: 'original',
   BILINGUAL: 'bilingual',
   TRANSLATION_ONLY: 'translation-only'
 };
@@ -109,13 +110,33 @@ const isCommonWord = (text) => COMMON_WORDS.has(text.toLowerCase());
 const shouldSkipTranslation = (text, element) => {
   const value = text.trim();
   if (!value) return true;
-  
+
+  // Skip huge blocks (over 1000 characters)
+  if (value.length > 1000) {
+    console.log(`Skipped [Too long]:`, value.substring(0,50)+'...', 'Length:', value.length);
+    return true;
+  }
+
+  // Skip text with extremely long words (likely URLs/garbage)
+  const words = value.split(/\s+/);
+  if (words.some(word => word.length >40)) {
+    console.log(`Skipped [Long word]:`, value.substring(0,50)+'...');
+    return true;
+  }
+
+  // Chinese character detection - skip if text contains Chinese characters
+  const chineseRegex = /[\u4e00-\u9fa5]/;
+  if (chineseRegex.test(value)) {
+    console.log(`Skipped [Chinese text]:`, value.substring(0, 50) + '...', 'Element:', element.tagName, getClassString(element));
+    return true;
+  }
+
   // Golden Rule: Text Density > 50 chars always wins (except code blocks)
   const isInCodeBlock = element.closest('pre, code, textarea');
   if (value.length > 50 && !isInCodeBlock) {
     return false;
   }
-  
+
   // For shorter text, apply strict filtering
   const reasons = [];
   if (isRepoPath(value)) reasons.push('repo-path');
@@ -143,31 +164,74 @@ const matchesMetaClass = (element) => {
   return isTechnicalClass(element);
 };
 
-const injectDisplayModeStyles = (() => {
-  let injected = false;
-  return () => {
-    if (injected) return;
-    const style = document.createElement('style');
-    style.setAttribute('data-doubao-style', 'display-mode');
-    style.textContent = `
-      .${ORIGINAL_CLASS} {
-        display: block;
+// Implement strict 3-state rendering system
+const renderElement = (element, mode) => {
+  const originalText = element.dataset.originalText || element.textContent;
+  const translatedText = element.dataset.translatedText;
+
+  // Skip elements that have images or other non-text content
+  const hasImages = element.querySelector('img');
+  if (hasImages) {
+    // If element contains images, just remove translation and leave as-is
+    const translationBlock = element.querySelector(`[${TRANSLATION_ATTR}]`);
+    if (translationBlock) {
+      translationBlock.remove();
+    }
+    return;
+  }
+
+  switch (mode) {
+    case MODE_OPTIONS.ORIGINAL:
+      // Remove translation containers and restore original text
+      const translationBlockOriginal = element.querySelector(`[${TRANSLATION_ATTR}]`);
+      if (translationBlockOriginal) {
+        translationBlockOriginal.remove();
       }
-      [data-doubao-display-mode='${MODE_OPTIONS.TRANSLATION_ONLY}'] .${ORIGINAL_CLASS} {
-        display: none !important;
+      break;
+
+    case MODE_OPTIONS.BILINGUAL:
+      // Remove existing translation block
+      const translationBlockBilingual = element.querySelector(`[${TRANSLATION_ATTR}]`);
+      if (translationBlockBilingual) {
+        translationBlockBilingual.remove();
       }
-    `;
-    (document.head || document.documentElement).appendChild(style);
-    injected = true;
-  };
-})();
+
+      // Recreate translation block only if we have a translation
+      if (translatedText) {
+        mountTranslation(element, originalText, element.dataset.doubaoTranslationLanguage, translatedText);
+      }
+      break;
+
+    case MODE_OPTIONS.TRANSLATION_ONLY:
+      // Remove translation container
+      const translationBlockOnly = element.querySelector(`[${TRANSLATION_ATTR}]`);
+      if (translationBlockOnly) {
+        translationBlockOnly.remove();
+      }
+
+      // Replace with translated text
+      element.textContent = translatedText;
+      break;
+  }
+};
 
 const applyDisplayMode = (mode = MODE_OPTIONS.BILINGUAL) => {
-  document.documentElement.setAttribute('data-doubao-display-mode', mode);
+  // Get all elements with processed translations
+  const translatedElements = document.querySelectorAll('[data-doubao-status="done"]');
+
+  translatedElements.forEach(element => {
+    renderElement(element, mode);
+  });
+
+  // Store current mode for reference
+  document.documentElement.setAttribute('data-doubao-current-mode', mode);
 };
 
 chrome.storage.local.get(['doubaoDisplayMode'], (result) => {
-  injectDisplayModeStyles();
+  // Clean up old display mode styles
+  const oldStyle = document.querySelector('[data-doubao-style="display-mode"]');
+  if (oldStyle) oldStyle.remove();
+
   applyDisplayMode(result?.doubaoDisplayMode || MODE_OPTIONS.BILINGUAL);
 });
 
@@ -270,10 +334,18 @@ const ensureOriginalWrapped = (element) => {
 const getStatus = (element) => element.getAttribute(STATUS_ATTR);
 const setStatus = (element, status) => element.setAttribute(STATUS_ATTR, status);
 
-function TranslationBlock({ text, targetLanguage, onStatusChange }) {
-  const [state, setState] = useState({ status: 'loading', translation: '', error: '' });
+function TranslationBlock({ text, targetLanguage, initialTranslation, onStatusChange, onTranslationComplete }) {
+  const [state, setState] = useState(() => {
+    if (initialTranslation) {
+      return { status: 'success', translation: initialTranslation, error: '' };
+    }
+    return { status: 'loading', translation: '', error: '' };
+  });
 
   useEffect(() => {
+    // Skip if we already have a translation
+    if (initialTranslation) return;
+
     let isMounted = true;
     onStatusChange?.('loading');
 
@@ -282,6 +354,7 @@ function TranslationBlock({ text, targetLanguage, onStatusChange }) {
         if (!isMounted) return;
         setState({ status: 'success', translation: result.translation, error: '' });
         onStatusChange?.('success');
+        onTranslationComplete?.(result.translation);
       })
       .catch((error) => {
         if (!isMounted) return;
@@ -333,7 +406,7 @@ const isNarrowContext = (element) => {
   return Boolean(element.closest?.('aside, nav, [data-view-component="true"] .js-repos-container, [data-hpc]'));
 };
 
-const mountTranslation = (element, text, targetLanguage) => {
+const mountTranslation = (element, text, targetLanguage, translatedText = null) => {
   const typography = getTypographyVars(element);
   const { wrapper, mountPoint } = createShadowContainer();
   applyTypographyVars(wrapper, typography);
@@ -343,56 +416,47 @@ const mountTranslation = (element, text, targetLanguage) => {
   element.appendChild(wrapper);
   element.dataset.doubaoTranslationLanguage = targetLanguage;
 
+  // Save original text only once
+  if (!element.dataset.originalText) {
+    element.dataset.originalText = text;
+  }
+
   const root = createRoot(mountPoint);
   root.render(
     <TranslationBlock
       text={text}
       targetLanguage={targetLanguage}
+      initialTranslation={translatedText}
       onStatusChange={(status) => {
         if (status === 'success' || status === 'error') {
           setStatus(element, STATUS.DONE);
         }
+      }}
+      onTranslationComplete={(newTranslation) => {
+        const finalTranslatedText = newTranslation || translatedText;
+
+        // Store important data attributes
+        if (!element.dataset.originalText) {
+          element.dataset.originalText = text;
+        }
+        element.dataset.translatedText = finalTranslatedText;
+        element.dataset.doubaoStatus = 'done';
+
+        // Remove old data attribute
+        delete element.dataset.doubaoTranslation;
+
+        // Apply current display mode
+        chrome.storage.local.get(['doubaoDisplayMode'], (result) => {
+          renderElement(element, result?.doubaoDisplayMode || MODE_OPTIONS.BILINGUAL);
+        });
       }}
     />
   );
 };
 
 let currentTargetLanguage = 'zh';
-
-const isEligibleRichBlock = (element, text) => {
-  if (!element) return false;
-  const tag = element.tagName;
-  
-  // Skip technical classes regardless of text density
-  if (isTechnicalClass(element)) {
-    console.log(`Skipped [Technical Class]:`, tag, getClassString(element), text.length);
-    return false;
-  }
-  
-  // Golden Rule: Text Density > 50 chars always wins
-  if (text.length > 50) {
-    return true;
-  }
-  
-  // For shorter text, apply stricter heuristics
-  if (tag === 'DIV') {
-    if (!hasDirectTextContent(element)) {
-      console.log(`Skipped [No Direct Text]:`, tag, getClassString(element), text.length);
-      return false;
-    }
-    if (text.length < 30) {
-      console.log(`Skipped [Too Short]:`, tag, getClassString(element), text.length);
-      return false;
-    }
-  }
-  if (tag === 'SECTION' || tag === 'ARTICLE') {
-    if (!hasDirectTextContent(element) || text.length < 30) {
-      console.log(`Skipped [Section/Article Too Short]:`, tag, getClassString(element), text.length);
-      return false;
-    }
-  }
-  return true;
-};
+let listenersInitialized = false;
+let isManuallyTriggered = false;
 
 const translatePage = (targetLanguage = 'zh') => {
   // Check if extension is enabled before processing
@@ -414,6 +478,10 @@ const translatePage = (targetLanguage = 'zh') => {
     try {
       if (hasTranslation(element)) return;
       if (isTechnicalClass(element)) return;
+
+      // Skip elements that contain images
+      const hasImages = element.querySelector('img');
+      if (hasImages) return;
 
       const text = element.innerText?.trim();
       if (!text || shouldSkipText(text) || isShortNumericText(text) || shouldSkipTranslation(text, element)) return;
@@ -438,17 +506,10 @@ const translatePage = (targetLanguage = 'zh') => {
   console.log(`Processed ${unprocessedBlocks.length} unprocessed blocks out of ${blocks.length} total`);
 };
 
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.type === 'START_TRANSLATION') {
-    const targetLanguage = message.payload?.targetLanguage || 'zh';
-    translatePage(targetLanguage);
-  }
-});
-
 const setupScrollListener = () => {
   if (typeof window === 'undefined') return;
   let scrollTimeout;
-  
+
   const handleScroll = () => {
     if (scrollTimeout) {
       clearTimeout(scrollTimeout);
@@ -457,7 +518,7 @@ const setupScrollListener = () => {
       translatePage(currentTargetLanguage);
     }, 500); // 500ms debounce
   };
-  
+
   window.addEventListener('scroll', handleScroll, { passive: true });
   console.log('Scroll listener attached for translation scanning');
 };
@@ -477,7 +538,94 @@ const setupMutationObserver = () => {
   observer.observe(document.body, { childList: true, subtree: true });
 };
 
-setupMutationObserver();
-setupScrollListener();
+const initializeTranslationListeners = () => {
+  if (listenersInitialized) return;
+  setupMutationObserver();
+  setupScrollListener();
+  listenersInitialized = true;
+};
+
+// Global message listener - always registered, regardless of autoTranslate setting
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Handle translation trigger
+  if (message.type === 'TRIGGER_TRANSLATION') {
+    const targetLanguage = message.payload?.targetLanguage || 'zh';
+
+    // Set flag indicating manual translation was triggered
+    isManuallyTriggered = true;
+
+    // Initialize listeners (scroll, mutation observer) if not already done
+    initializeTranslationListeners();
+
+    // Start translation
+    translatePage(targetLanguage);
+
+    console.log('Manual translation triggered');
+    
+    // Send response back to popup
+    sendResponse({ success: true });
+  }
+
+  // Handle display mode updates
+  if (message.type === 'UPDATE_DISPLAY_MODE') {
+    applyDisplayMode(message.mode);
+    sendResponse({ success: true });
+  }
+  
+  // Return true to indicate we will send a response asynchronously
+  return true;
+});
+
+const isEligibleRichBlock = (element, text) => {
+  if (!element) return false;
+  const tag = element.tagName;
+
+  // Skip technical classes regardless of text density
+  if (isTechnicalClass(element)) {
+    console.log(`Skipped [Technical Class]:`, tag, getClassString(element), text.length);
+    return false;
+  }
+
+  // Golden Rule: Text Density > 50 chars always wins
+  if (text.length > 50) {
+    return true;
+  }
+
+  // For shorter text, apply stricter heuristics
+  if (tag === 'DIV') {
+    if (!hasDirectTextContent(element)) {
+      console.log(`Skipped [No Direct Text]:`, tag, getClassString(element), text.length);
+      return false;
+    }
+    if (text.length < 30) {
+      console.log(`Skipped [Too Short]:`, tag, getClassString(element), text.length);
+      return false;
+    }
+  }
+  if (tag === 'SECTION' || tag === 'ARTICLE') {
+    if (!hasDirectTextContent(element) || text.length < 30) {
+      console.log(`Skipped [Section/Article Too Short]:`, tag, getClassString(element), text.length);
+      return false;
+    }
+  }
+  return true;
+};
+
+// Initialization logic - check autoTranslate setting
+chrome.storage.local.get('autoTranslate', (result) => {
+  const autoTranslate = result.autoTranslate ?? false;
+
+  // If autoTranslate is true, run translation immediately
+  if (autoTranslate) {
+    console.log('Auto-translate enabled - starting translation');
+    initializeTranslationListeners();
+    translatePage(currentTargetLanguage);
+  }
+  // If autoTranslate is false, do NOT run translation immediately,
+  // but keep the message listener active to handle manual triggers
+  else {
+    console.log('Auto-translate disabled - waiting for manual trigger');
+  }
+});
 
 console.info('Doubao Immersive Translator content script ready.');
