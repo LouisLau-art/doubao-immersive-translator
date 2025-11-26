@@ -1,16 +1,23 @@
-// 确保这个文件名和你实际的文件名一致
+// src/background/index.ts
 import { translateText } from './doubaoService.js';
+import type { TranslationRequest, TranslationResponse } from '../types';
 
 // 1. 【关键】添加启动日志，证明 Service Worker 活了
 console.log('✅ Doubao Background Worker Started');
 
 const MAX_CONCURRENT_REQUESTS = 15;
-const requestQueue = [];
-const cache = new Map();
+const requestQueue: Array<{
+  text: string;
+  targetLanguage: string;
+  apiKey: string;
+  cacheKey: string;
+  sendResponse: (response: TranslationResponse) => void;
+}> = [];
+const cache = new Map<string, string>();
 let activeCount = 0;
 
-// 哈希生成函数 (保持不变)
-const createHash = input => {
+// 哈希生成函数
+const createHash = (input: string): string => {
   let hash = 0;
   for (let i = 0; i < input.length; i += 1) {
     const chr = input.charCodeAt(i);
@@ -20,13 +27,15 @@ const createHash = input => {
   return hash.toString(16);
 };
 
-// 队列处理函数 (保持不变)
-const processQueue = () => {
+// 队列处理函数
+const processQueue = (): void => {
   if (activeCount >= MAX_CONCURRENT_REQUESTS || requestQueue.length === 0) {
     return;
   }
 
   const task = requestQueue.shift();
+  if (!task) return;
+
   activeCount += 1;
 
   console.log(`🚀 Processing translation: "${task.text.substring(0, 10)}..."`);
@@ -49,7 +58,7 @@ const processQueue = () => {
     });
 };
 
-const enqueueTranslation = task => {
+const enqueueTranslation = (task: typeof requestQueue[0]): void => {
   requestQueue.push(task);
   processQueue();
 };
@@ -58,7 +67,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // 2. 添加消息接收日志
   if (message.type === 'TRANSLATE_TEXT') {
     // 兼容处理：有些地方可能没包 payload，做个容错
-    const payload = message.payload || message;
+    const payload = (message.payload || message) as TranslationRequest;
     const { text, targetLanguage = 'zh' } = payload;
 
     if (!text || !text.trim()) {
@@ -70,13 +79,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const cacheKey = createHash(`${targetLanguage}::${text}`);
     if (cache.has(cacheKey)) {
       console.log('📦 Serving from cache');
-      sendResponse({ success: true, translation: cache.get(cacheKey), cached: true });
+      sendResponse({ success: true, translation: cache.get(cacheKey)!, cached: true });
       return false; // 同步返回，不需要保持通道
     }
 
     // 获取 API Key
     chrome.storage.local.get(['doubaoApiKey'], result => {
-      const apiKey = result?.doubaoApiKey;
+      const apiKey = result?.doubaoApiKey as string | undefined;
       if (!apiKey) {
         console.error('❌ No API Key found');
         sendResponse({
@@ -108,7 +117,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true, clearedItems: cacheSize });
     } catch (error) {
       console.error('❌ Failed to clear cache:', error);
-      sendResponse({ success: false, error: error.message });
+      sendResponse({ success: false, error: (error as Error).message });
     }
     return false;
   }

@@ -16,21 +16,34 @@
 }
 
 body {
-  background: var(--background);
+  background: var(--container-bg);
   color: var(--text-color);
 }
 
+/* 确保整个翻译区域正确计算高度 */
 .translation-area {
   display: flex;
   flex: 1;
   position: relative;
   min-height: 0;
+  max-height: calc(100vh - 200px); /* 减去头部和底部状态栏的高度 */
 }
 
 .input-section,
 .output-section {
   min-width: 0;
   transition: flex 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 确保输出区域容器正确计算高度 */
+.output-section .relative.flex-1 {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
 }
 
 .section-header {
@@ -129,4 +142,74 @@ body {
 
 .status-bar {
   border-top: 1px solid var(--border-color);
+}
+
+/* 修复输出区域的滚动条问题 - 核心修复 */
+.markdown-body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+/* 确保文本区域也能正确滚动 */
+.text-area {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.markdown-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.markdown-body::-webkit-scrollbar-track {
+  background: #2d2d2d;
+  border-radius: 4px;
+}
+
+.markdown-body::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 4px;
+}
+
+.markdown-body::-webkit-scrollbar-thumb:hover {
+  background: #764ba2;
+}
+/* Text area scrollbar */
+.text-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.text-area::-webkit-scrollbar-track {
+  background: #2d2d2d;
+  border-radius: 4px;
+}
+
+.text-area::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 4px;
+}
+
+.text-area::-webkit-scrollbar-thumb:hover {
+  background: #764ba2;
+}
+
+/* Global scrollbar */
+html::-webkit-scrollbar {
+  width: 8px;
+}
+
+html::-webkit-scrollbar-track {
+  background: #2d2d2d;
+  border-radius: 4px;
+}
+
+html::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 4px;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: #764ba2;
 }

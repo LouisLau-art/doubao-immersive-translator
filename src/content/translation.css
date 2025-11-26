@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 :host {
-  --doubao-font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --doubao-font-family:
+    'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --doubao-font-size: 1em;
   --doubao-line-height: 1.35;
   --doubao-color: #5f6368;

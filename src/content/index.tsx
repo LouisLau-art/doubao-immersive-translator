@@ -1,72 +1,59 @@
+
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+// @ts-ignore - Vite handles CSS imports
 import styles from './translation.css?inline';
 
 console.log('Doubao Immersive Translator content script loaded');
 
-const BLOCK_SELECTORS =
-  'p, h1, h2, h3, h4, h5, h6, li, div, article, section, div[class*="content"], div[class*="text"], div[class*="description"]';
+// Define types
+
+// Define types
+type DisplayMode = 'original' | 'bilingual' | 'translation-only';
+type ElementStatus = 'pending' | 'done';
+
+const BLOCK_SELECTORS = 'p, h1, h2, h3, h4, h5, h6, li, div, article, section, div[class*="content"], div[class*="text"], div[class*="description"]';
 const TRANSLATION_ATTR = 'data-doubao-translation-container';
 const ORIGINAL_CLASS = 'doubao-original';
 const STATUS_ATTR = 'data-doubao-status';
-const STATUS = {
+const STATUS: Record<string, ElementStatus> = {
   PENDING: 'pending',
   DONE: 'done',
 };
 const TECHNICAL_CLASS_KEYWORDS = ['hljs', 'code', 'nav', 'menu', 'footer', 'button', 'input'];
-const USERNAME_CLASS_KEYWORDS = [
-  'author',
-  'text-bold',
-  'link--primary',
-  'user',
-  'avatar',
-  'follow',
-  'f4',
-];
-const COMMON_SHORT_WORDS = new Set([
-  'new',
-  'top',
-  'star',
-  'fork',
-  'edit',
-  'save',
-  'news',
-  'run',
-  'log',
-]);
-const COMMON_WORDS = new Set([
-  ...COMMON_SHORT_WORDS,
-  'issues',
-  'pull',
-  'request',
-  'releases',
-  'docs',
-  'code',
-  'main',
-  'stable',
-  'latest',
-  'profile',
-  'readme',
-  'community',
-  'support',
-  'explore',
-  'home',
-  'topics',
-]);
+const USERNAME_CLASS_KEYWORDS = ['author', 'text-bold', 'link--primary', 'user', 'avatar', 'follow', 'f4'];
+const COMMON_SHORT_WORDS = new Set(['new', 'top', 'star', 'fork', 'edit', 'save', 'news', 'run', 'log']);
+const COMMON_WORDS = new Set([...COMMON_SHORT_WORDS, 'issues', 'pull', 'request', 'releases', 'docs', 'code', 'main', 'stable', 'latest', 'profile', 'readme', 'community', 'support', 'explore', 'home', 'topics']);
 const MODE_OPTIONS = {
   ORIGINAL: 'original',
   BILINGUAL: 'bilingual',
   TRANSLATION_ONLY: 'translation-only',
-};
+} as const;
 
-const sendTranslationRequest = (text, targetLanguage) =>
+interface TranslationBlockProps {
+  text: string;
+  targetLanguage: string;
+  initialTranslation?: string;
+  onStatusChange?: (status: string) => void;
+  onTranslationComplete?: (translation: string) => void;
+}
+
+interface TranslationResponse {
+  success: boolean;
+  translation?: string;
+  error?: string;
+  cached?: boolean;
+}
+
+// Utility functions
+const sendTranslationRequest = (text: string, targetLanguage: string): Promise<TranslationResponse> => 
   new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(
       {
         type: 'TRANSLATE_TEXT',
         payload: { text, targetLanguage },
       },
-      response => {
+      (response: TranslationResponse) => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
           return;
@@ -78,31 +65,31 @@ const sendTranslationRequest = (text, targetLanguage) =>
         }
 
         resolve(response);
-      },
+      }
     );
   });
 
-const isUrlLike = text => /^https?:\/\//i.test(text) || /^([A-Za-z]:\\|\/|\.\/)/.test(text);
-const hasLetters = text => /[\p{L}]/u.test(text);
-const shouldSkipText = text => isUrlLike(text) || !hasLetters(text);
-const isShortNumericText = text => text.length < 3 && /\d/.test(text);
+const isUrlLike = (text: string) => /^https?:\/\//i.test(text) || /^([A-Za-z]:\\|\/|\.\/)/.test(text);
+const hasLetters = (text: string) => /[\p{L}]/u.test(text);
+const shouldSkipText = (text: string) => isUrlLike(text) || !hasLetters(text);
+const isShortNumericText = (text: string) => text.length < 3 && /\d/.test(text);
 const repoPathRegex = /^@?[\w-]+\/[\w-]+$/u;
-const isRepoPath = text => repoPathRegex.test(text);
-const isUsernameText = text => text.trim().startsWith('@');
+const isRepoPath = (text: string) => repoPathRegex.test(text);
+const isUsernameText = (text: string) => text.trim().startsWith('@');
 const camelCaseRegex = /[a-z]+[A-Z][a-z]+/;
 const snakeCaseRegex = /[a-z]+_[a-z]+/;
 const codeSymbolRegex = /[`$<>;(){}\[\]]/;
 const commandKeywordRegex = /(npm|yarn|pnpm|git|sudo|brew|pip|cargo|dotnet|razor)/i;
 
-const getClassString = element => {
+const getClassString = (element: Element | null): string => {
   if (!element) return '';
   if (typeof element.className === 'string') return element.className;
-  if (typeof element.className?.baseVal === 'string') return element.className.baseVal;
+  if (typeof (element as SVGElement).className?.baseVal === 'string') return (element as SVGElement).className.baseVal;
   if (element.classList) return Array.from(element.classList).join(' ');
   return '';
 };
 
-const hasUsernameLikeContext = element => {
+const hasUsernameLikeContext = (element: Element | null): boolean => {
   let current = element;
   while (current && current !== document.body) {
     const classString = getClassString(current).toLowerCase();
@@ -114,19 +101,24 @@ const hasUsernameLikeContext = element => {
   return false;
 };
 
-const hasDirectTextContent = element =>
-  Array.from(element?.childNodes ?? []).some(
-    node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()?.length > 0,
-  );
+const hasDirectTextContent = (element: Element | null): boolean => {
+  if (!element) return false;
+  return Array.from(element.childNodes).some(node => {
+    if (node.nodeType === Node.TEXT_NODE && node.textContent) {
+      return node.textContent.trim().length > 0;
+    }
+    return false;
+  });
+};
 
-const isTechnicalClass = element => {
+const isTechnicalClass = (element: Element): boolean => {
   const classString = getClassString(element).toLowerCase();
   return TECHNICAL_CLASS_KEYWORDS.some(keyword => classString.includes(keyword));
 };
 
-const isCommonWord = text => COMMON_WORDS.has(text.toLowerCase());
+const isCommonWord = (text: string) => COMMON_WORDS.has(text.toLowerCase());
 
-const shouldSkipTranslation = (text, element) => {
+const shouldSkipTranslation = (text: string, element: Element): boolean => {
   const value = text.trim();
   if (!value) return true;
 
@@ -196,9 +188,9 @@ const shouldSkipTranslation = (text, element) => {
 };
 
 // Implement strict 3-state rendering system
-const renderElement = (element, mode) => {
-  const originalText = element.dataset.originalText || element.textContent;
-  const translatedText = element.dataset.translatedText;
+const renderElement = (element: HTMLElement, mode: DisplayMode) => {
+  const originalText = element.dataset.originalText || element.textContent || '';
+  const translatedText = element.dataset.translatedText || '';
 
   // Skip elements that have images or other non-text content
   const hasImages = element.querySelector('img');
@@ -233,8 +225,8 @@ const renderElement = (element, mode) => {
         mountTranslation(
           element,
           originalText,
-          element.dataset.doubaoTranslationLanguage,
-          translatedText,
+          element.dataset.doubaoTranslationLanguage || 'zh',
+          translatedText
         );
       }
       break;
@@ -254,9 +246,9 @@ const renderElement = (element, mode) => {
   }
 };
 
-const applyDisplayMode = (mode = MODE_OPTIONS.BILINGUAL) => {
+const applyDisplayMode = (mode: DisplayMode = MODE_OPTIONS.BILINGUAL) => {
   // Get all elements with processed translations
-  const translatedElements = document.querySelectorAll('[data-doubao-status="done"]');
+  const translatedElements = document.querySelectorAll<HTMLElement>('[data-doubao-status="done"]');
 
   translatedElements.forEach(element => {
     renderElement(element, mode);
@@ -271,19 +263,19 @@ chrome.storage.local.get(['doubaoDisplayMode'], result => {
   const oldStyle = document.querySelector('[data-doubao-style="display-mode"]');
   if (oldStyle) oldStyle.remove();
 
-  applyDisplayMode(result?.doubaoDisplayMode || MODE_OPTIONS.BILINGUAL);
+  applyDisplayMode(result?.doubaoDisplayMode as DisplayMode || MODE_OPTIONS.BILINGUAL);
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'local' || !changes.doubaoDisplayMode) return;
-  const mode = changes.doubaoDisplayMode.newValue || MODE_OPTIONS.BILINGUAL;
+  const mode = changes.doubaoDisplayMode.newValue as DisplayMode || MODE_OPTIONS.BILINGUAL;
   applyDisplayMode(mode);
 });
 
 // Extension enable/disable functionality
 let extensionEnabled = true;
 
-const updateExtensionState = enabled => {
+const updateExtensionState = (enabled: boolean) => {
   extensionEnabled = enabled;
 
   if (enabled) {
@@ -326,7 +318,7 @@ const injectDisableStyles = (() => {
 // Inject disable styles on load
 injectDisableStyles();
 
-const getTypographyVars = element => {
+const getTypographyVars = (element: Element) => {
   const computed = window.getComputedStyle(element);
   return {
     fontFamily: computed.fontFamily,
@@ -336,7 +328,7 @@ const getTypographyVars = element => {
   };
 };
 
-const applyTypographyVars = (wrapper, typography) => {
+const applyTypographyVars = (wrapper: HTMLElement, typography: ReturnType<typeof getTypographyVars>) => {
   if (!typography) return;
   const entries = [
     ['--doubao-font-family', typography.fontFamily],
@@ -351,7 +343,7 @@ const applyTypographyVars = (wrapper, typography) => {
   });
 };
 
-const ensureOriginalWrapped = element => {
+const ensureOriginalWrapped = (element: HTMLElement) => {
   if (element.querySelector(`.${ORIGINAL_CLASS}`)) {
     return;
   }
@@ -361,7 +353,7 @@ const ensureOriginalWrapped = element => {
 
   while (element.firstChild) {
     const child = element.firstChild;
-    if (child.hasAttribute?.(TRANSLATION_ATTR)) {
+    if (child instanceof HTMLElement && child.hasAttribute(TRANSLATION_ATTR)) {
       break;
     }
     wrapper.appendChild(child);
@@ -370,16 +362,16 @@ const ensureOriginalWrapped = element => {
   element.insertBefore(wrapper, element.firstChild);
 };
 
-const getStatus = element => element.getAttribute(STATUS_ATTR);
-const setStatus = (element, status) => element.setAttribute(STATUS_ATTR, status);
+const getStatus = (element: Element) => element.getAttribute(STATUS_ATTR);
+const setStatus = (element: Element, status: string) => element.setAttribute(STATUS_ATTR, status);
 
-function TranslationBlock({
+const TranslationBlock: React.FC<TranslationBlockProps> = ({
   text,
   targetLanguage,
   initialTranslation,
   onStatusChange,
   onTranslationComplete,
-}) {
+}) => {
   const [state, setState] = useState(() => {
     if (initialTranslation) {
       return { status: 'success', translation: initialTranslation, error: '' };
@@ -397,9 +389,9 @@ function TranslationBlock({
     sendTranslationRequest(text, targetLanguage)
       .then(result => {
         if (!isMounted) return;
-        setState({ status: 'success', translation: result.translation, error: '' });
+        setState({ status: 'success', translation: result.translation || '', error: '' });
         onStatusChange?.('success');
-        onTranslationComplete?.(result.translation);
+        onTranslationComplete?.(result.translation || '');
       })
       .catch(error => {
         if (!isMounted) return;
@@ -431,7 +423,7 @@ function TranslationBlock({
         : state.translation;
 
   return <div className={classNames.join(' ')}>{displayText}</div>;
-}
+};
 
 const createShadowContainer = () => {
   const wrapper = document.createElement('div');
@@ -448,20 +440,20 @@ const createShadowContainer = () => {
   return { wrapper, mountPoint };
 };
 
-const getBlocks = () => Array.from(document.querySelectorAll(BLOCK_SELECTORS));
+const getBlocks = () => Array.from(document.querySelectorAll<HTMLElement>(BLOCK_SELECTORS));
 
-const hasTranslation = element => Boolean(element.querySelector(`[${TRANSLATION_ATTR}]`));
+const hasTranslation = (element: Element) => Boolean(element.querySelector(`[${TRANSLATION_ATTR}]`));
 
-const isNarrowContext = element => {
+const isNarrowContext = (element: Element): boolean => {
   if (!element) return false;
-  const width = element.getBoundingClientRect?.().width || 0;
-  if (width && width < 280) return true;
+  const rect = element.getBoundingClientRect();
+  if (rect && rect.width < 280) return true;
   return Boolean(
-    element.closest?.('aside, nav, [data-view-component="true"] .js-repos-container, [data-hpc]'),
+    element.closest('aside, nav, [data-view-component="true"] .js-repos-container, [data-hpc]')
   );
 };
 
-const mountTranslation = (element, text, targetLanguage, translatedText = null) => {
+const mountTranslation = (element: HTMLElement, text: string, targetLanguage: string, translatedText: string | null = null) => {
   const typography = getTypographyVars(element);
   const { wrapper, mountPoint } = createShadowContainer();
   applyTypographyVars(wrapper, typography);
@@ -481,7 +473,7 @@ const mountTranslation = (element, text, targetLanguage, translatedText = null) 
     <TranslationBlock
       text={text}
       targetLanguage={targetLanguage}
-      initialTranslation={translatedText}
+      initialTranslation={translatedText || undefined}
       onStatusChange={status => {
         if (status === 'success' || status === 'error') {
           setStatus(element, STATUS.DONE);
@@ -494,7 +486,7 @@ const mountTranslation = (element, text, targetLanguage, translatedText = null) 
         if (!element.dataset.originalText) {
           element.dataset.originalText = text;
         }
-        element.dataset.translatedText = finalTranslatedText;
+        element.dataset.translatedText = finalTranslatedText || '';
         element.dataset.doubaoStatus = 'done';
 
         // Remove old data attribute
@@ -502,194 +494,9 @@ const mountTranslation = (element, text, targetLanguage, translatedText = null) 
 
         // Apply current display mode
         chrome.storage.local.get(['doubaoDisplayMode'], result => {
-          renderElement(element, result?.doubaoDisplayMode || MODE_OPTIONS.BILINGUAL);
+          renderElement(element, result?.doubaoDisplayMode as DisplayMode || MODE_OPTIONS.BILINGUAL);
         });
-      }}
-    />,
-  );
+  }}
+/>
+);
 };
-
-let currentTargetLanguage = 'zh';
-let listenersInitialized = false;
-
-const translatePage = (targetLanguage = 'zh') => {
-  // Check if extension is enabled before processing
-  if (!extensionEnabled) {
-    console.log('Translation disabled - skipping page processing');
-    return;
-  }
-
-  currentTargetLanguage = targetLanguage;
-  const blocks = getBlocks();
-
-  // Performance: Quick filter for already processed elements
-  const unprocessedBlocks = blocks.filter(element => {
-    const currentStatus = getStatus(element);
-    return currentStatus !== STATUS.PENDING && currentStatus !== STATUS.DONE;
-  });
-
-  unprocessedBlocks.forEach(element => {
-    try {
-      if (hasTranslation(element)) return;
-      if (isTechnicalClass(element)) return;
-
-      // Skip elements that contain images
-      const hasImages = element.querySelector('img');
-      if (hasImages) return;
-
-      const text = element.innerText?.trim();
-      if (
-        !text ||
-        shouldSkipText(text) ||
-        isShortNumericText(text) ||
-        shouldSkipTranslation(text, element)
-      )
-        return;
-
-      const tag = element.tagName;
-      if (tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE') {
-        if (!isEligibleRichBlock(element, text)) {
-          return;
-        }
-      }
-
-      setStatus(element, STATUS.PENDING);
-      ensureOriginalWrapped(element);
-
-      mountTranslation(element, text, targetLanguage);
-    } catch (error) {
-      console.error('Error processing element:', error, element);
-      // Continue processing other elements even if one fails
-    }
-  });
-
-  console.log(
-    `Processed ${unprocessedBlocks.length} unprocessed blocks out of ${blocks.length} total`,
-  );
-};
-
-const setupScrollListener = () => {
-  if (typeof window === 'undefined') return;
-  let scrollTimeout;
-
-  const handleScroll = () => {
-    if (scrollTimeout) {
-      clearTimeout(scrollTimeout);
-    }
-    scrollTimeout = setTimeout(() => {
-      translatePage(currentTargetLanguage);
-    }, 500); // 500ms debounce
-  };
-
-  window.addEventListener('scroll', handleScroll, { passive: true });
-  console.log('Scroll listener attached for translation scanning');
-};
-
-const setupMutationObserver = () => {
-  if (typeof MutationObserver === 'undefined' || !document?.body) return;
-  let timeoutId;
-  const observer = new MutationObserver(() => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    timeoutId = setTimeout(() => {
-      translatePage(currentTargetLanguage);
-    }, 1500);
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
-};
-
-const initializeTranslationListeners = () => {
-  if (listenersInitialized) return;
-  setupMutationObserver();
-  setupScrollListener();
-  listenersInitialized = true;
-};
-
-// Global message listener - always registered, regardless of autoTranslate setting
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Handle translation trigger
-  if (message.type === 'TRIGGER_TRANSLATION') {
-    const targetLanguage = message.payload?.targetLanguage || 'zh';
-
-    // Initialize listeners (scroll, mutation observer) if not already done
-    initializeTranslationListeners();
-
-    // Start translation
-    translatePage(targetLanguage);
-
-    console.log('Manual translation triggered');
-
-    // Send response back to popup
-    sendResponse({ success: true });
-  }
-
-  // Handle display mode updates
-  if (message.type === 'UPDATE_DISPLAY_MODE') {
-    applyDisplayMode(message.mode);
-    sendResponse({ success: true });
-  }
-
-  // Return true to indicate we will send a response asynchronously
-  return true;
-});
-
-const isEligibleRichBlock = (element, text) => {
-  if (!element) return false;
-  const tag = element.tagName;
-
-  // Skip technical classes regardless of text density
-  if (isTechnicalClass(element)) {
-    console.log(`Skipped [Technical Class]:`, tag, getClassString(element), text.length);
-    return false;
-  }
-
-  // Golden Rule: Text Density > 50 chars always wins
-  if (text.length > 50) {
-    return true;
-  }
-
-  // For shorter text, apply stricter heuristics
-  if (tag === 'DIV') {
-    if (!hasDirectTextContent(element)) {
-      console.log(`Skipped [No Direct Text]:`, tag, getClassString(element), text.length);
-      return false;
-    }
-    if (text.length < 30) {
-      console.log(`Skipped [Too Short]:`, tag, getClassString(element), text.length);
-      return false;
-    }
-  }
-  if (tag === 'SECTION' || tag === 'ARTICLE') {
-    if (!hasDirectTextContent(element) || text.length < 30) {
-      console.log(
-        `Skipped [Section/Article Too Short]:`,
-        tag,
-        getClassString(element),
-        text.length,
-      );
-      return false;
-    }
-  }
-  return true;
-};
-
-// Initialization logic - check autoTranslate setting
-chrome.storage.local.get('autoTranslate', result => {
-  const autoTranslate = result.autoTranslate ?? false;
-
-  // If autoTranslate is true, run translation immediately
-  if (autoTranslate) {
-    console.log('Auto-translate enabled - starting translation');
-    initializeTranslationListeners();
-    translatePage(currentTargetLanguage);
-  }
-  // If autoTranslate is false, do NOT run translation immediately,
-  // but keep the message listener active to handle manual triggers
-  else {
-    console.log('Auto-translate disabled - waiting for manual trigger');
-  }
-});
-
-console.info('Doubao Immersive Translator content script ready.');

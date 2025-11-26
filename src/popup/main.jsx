@@ -30,12 +30,12 @@ const TARGET_OPTIONS = [
   { value: 'ro', label: 'Romanian' },
   { value: 'sv', label: 'Swedish' },
   { value: 'tr', label: 'Turkish' },
-  { value: 'uk', label: 'Ukrainian' }
+  { value: 'uk', label: 'Ukrainian' },
 ];
 
 const MODE_OPTIONS = {
   BILINGUAL: 'bilingual',
-  TRANSLATION_ONLY: 'translation-only'
+  TRANSLATION_ONLY: 'translation-only',
 };
 
 function Popup() {
@@ -49,16 +49,25 @@ function Popup() {
   const [isTranslating, setIsTranslating] = useState(false);
 
   useEffect(() => {
-    chrome.storage.local.get(['doubaoApiKey', 'doubaoTargetLanguage', 'doubaoDisplayMode', 'extensionEnabled', 'autoTranslate'], (result) => {
-      if (result.doubaoApiKey) setApiKey(result.doubaoApiKey);
-      if (result.doubaoTargetLanguage) setTargetLanguage(result.doubaoTargetLanguage);
-      if (result.doubaoDisplayMode) setDisplayMode(result.doubaoDisplayMode);
-      if (result.extensionEnabled !== undefined) setExtensionEnabled(result.extensionEnabled);
-      if (result.autoTranslate !== undefined) setAutoTranslate(result.autoTranslate);
-    });
+    chrome.storage.local.get(
+      [
+        'doubaoApiKey',
+        'doubaoTargetLanguage',
+        'doubaoDisplayMode',
+        'extensionEnabled',
+        'autoTranslate',
+      ],
+      result => {
+        if (result.doubaoApiKey) setApiKey(result.doubaoApiKey);
+        if (result.doubaoTargetLanguage) setTargetLanguage(result.doubaoTargetLanguage);
+        if (result.doubaoDisplayMode) setDisplayMode(result.doubaoDisplayMode);
+        if (result.extensionEnabled !== undefined) setExtensionEnabled(result.extensionEnabled);
+        if (result.autoTranslate !== undefined) setAutoTranslate(result.autoTranslate);
+      },
+    );
   }, []);
 
-  const handleSave = async (event) => {
+  const handleSave = async event => {
     event.preventDefault();
     setIsSaving(true);
     setStatus(null);
@@ -68,8 +77,8 @@ function Popup() {
         doubaoApiKey: apiKey.trim(),
         doubaoTargetLanguage: targetLanguage,
         doubaoDisplayMode: displayMode,
-        extensionEnabled: extensionEnabled,
-        autoTranslate: autoTranslate
+        extensionEnabled,
+        autoTranslate,
       });
       setStatus({ type: 'success', message: 'Preferences saved.' });
     } catch (error) {
@@ -87,12 +96,13 @@ function Popup() {
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.id) throw new Error("No active tab found.");
+      if (!tab?.id) throw new Error('No active tab found.');
 
       // Refined internal page check
       const forbiddenProtocols = ['chrome://', 'edge://', 'about:', 'file://', 'extensions://'];
-      const isForbiddenPage = tab.url && forbiddenProtocols.some(protocol => tab.url.startsWith(protocol));
-      
+      const isForbiddenPage =
+        tab.url && forbiddenProtocols.some(protocol => tab.url.startsWith(protocol));
+
       // If it's a forbidden page or URL is not available, show error
       if (isForbiddenPage || !tab.url) {
         let errorMsg = '请选择一个普通的网页进行翻译，支持的页面格式：http:// 或 https://';
@@ -101,7 +111,7 @@ function Popup() {
         }
         setStatus({
           type: 'error',
-          message: errorMsg
+          message: errorMsg,
         });
         return;
       }
@@ -109,20 +119,21 @@ function Popup() {
       // 发送消息
       await chrome.tabs.sendMessage(tab.id, {
         type: 'TRIGGER_TRANSLATION',
-        payload: { targetLanguage }
+        payload: { targetLanguage },
       });
 
       setStatus({ type: 'success', message: 'Translation started.' });
     } catch (error) {
-      console.error("Translation trigger failed:", error);
-      const isConnectionError = error.message.includes("Receiving end does not exist") || 
-                                error.message.includes("Could not establish connection");
+      console.error('Translation trigger failed:', error);
+      const isConnectionError =
+        error.message.includes('Receiving end does not exist') ||
+        error.message.includes('Could not establish connection');
 
       // User-friendly error message for connection issues
       if (isConnectionError) {
         setStatus({
           type: 'error',
-          message: '插件脚本未加载，请刷新当前网页'
+          message: '插件脚本未加载，请刷新当前网页',
         });
       } else {
         // For other errors, show generic message
@@ -133,19 +144,18 @@ function Popup() {
     }
   };
 
-
   const toggleDisplayMode = () => {
-    setDisplayMode((prev) =>
-      prev === MODE_OPTIONS.BILINGUAL ? MODE_OPTIONS.TRANSLATION_ONLY : MODE_OPTIONS.BILINGUAL
+    setDisplayMode(prev =>
+      prev === MODE_OPTIONS.BILINGUAL ? MODE_OPTIONS.TRANSLATION_ONLY : MODE_OPTIONS.BILINGUAL,
     );
   };
 
   const toggleExtensionEnabled = () => {
-    setExtensionEnabled((prev) => !prev);
+    setExtensionEnabled(prev => !prev);
   };
 
   const toggleAutoTranslate = () => {
-    setAutoTranslate((prev) => !prev);
+    setAutoTranslate(prev => !prev);
   };
 
   const handleOpenTranslator = () => {
@@ -160,11 +170,11 @@ function Popup() {
   const handleClearCache = async () => {
     try {
       // Send message to background to clear cache
-      chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' }, (response) => {
+      chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' }, response => {
         if (response?.success) {
           setStatus({ type: 'success', message: 'Cache cleared successfully.' });
           // Reload current tab to refresh translations
-          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
             if (tabs[0]) {
               chrome.tabs.reload(tabs[0].id);
             }
@@ -180,27 +190,27 @@ function Popup() {
   };
 
   return (
-    <div className="min-h-[320px] bg-slate-900 text-white">
-      <div className="p-4 space-y-4">
+    <div className='min-h-[320px] bg-slate-900 text-white'>
+      <div className='p-4 space-y-4'>
         <div>
-          <h1 className="text-xl font-semibold">Doubao Immersive Translator</h1>
-          <p className="text-sm text-slate-300">
+          <h1 className='text-xl font-semibold'>Doubao Immersive Translator</h1>
+          <p className='text-sm text-slate-300'>
             Enter your Volcengine API key and select a target language.
           </p>
         </div>
 
-        <form className="space-y-3" onSubmit={handleSave}>
-          <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
-            <div className="flex items-center justify-between">
+        <form className='space-y-3' onSubmit={handleSave}>
+          <div className='rounded-lg border border-slate-700 bg-slate-800/60 p-3'>
+            <div className='flex items-center justify-between'>
               <div>
-                <p className="text-sm font-medium text-slate-200">Extension Status</p>
-                <p className="text-xs text-slate-400">
+                <p className='text-sm font-medium text-slate-200'>Extension Status</p>
+                <p className='text-xs text-slate-400'>
                   {extensionEnabled ? 'Translation is enabled' : 'Translation is disabled'}
                 </p>
               </div>
               <button
-                type="button"
-                role="switch"
+                type='button'
+                role='switch'
                 aria-checked={extensionEnabled}
                 onClick={toggleExtensionEnabled}
                 className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold text-white transition ${
@@ -221,17 +231,17 @@ function Popup() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
-            <div className="flex items-center justify-between">
+          <div className='rounded-lg border border-slate-700 bg-slate-800/60 p-3'>
+            <div className='flex items-center justify-between'>
               <div>
-                <p className="text-sm font-medium text-slate-200">Auto-translate</p>
-                <p className="text-xs text-slate-400">
+                <p className='text-sm font-medium text-slate-200'>Auto-translate</p>
+                <p className='text-xs text-slate-400'>
                   {autoTranslate ? 'Translate pages automatically' : 'Manual translation only'}
                 </p>
               </div>
               <button
-                type="button"
-                role="switch"
+                type='button'
+                role='switch'
                 aria-checked={autoTranslate}
                 onClick={toggleAutoTranslate}
                 className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold text-white transition ${
@@ -252,22 +262,26 @@ function Popup() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
-            <div className="flex items-center justify-between">
+          <div className='rounded-lg border border-slate-700 bg-slate-800/60 p-3'>
+            <div className='flex items-center justify-between'>
               <div>
-                <p className="text-sm font-medium text-slate-200">Display Mode</p>
-                <p className="text-xs text-slate-400">
-                  {displayMode === MODE_OPTIONS.BILINGUAL ? 'Show original + translation' : 'Show translation only'}
+                <p className='text-sm font-medium text-slate-200'>Display Mode</p>
+                <p className='text-xs text-slate-400'>
+                  {displayMode === MODE_OPTIONS.BILINGUAL
+                    ? 'Show original + translation'
+                    : 'Show translation only'}
                 </p>
               </div>
               <button
-                type="button"
-                role="switch"
+                type='button'
+                role='switch'
                 aria-checked={displayMode === MODE_OPTIONS.TRANSLATION_ONLY}
                 onClick={toggleDisplayMode}
-                className="flex items-center gap-2 rounded-full border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-semibold text-white transition hover:border-sky-500"
+                className='flex items-center gap-2 rounded-full border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-semibold text-white transition hover:border-sky-500'
               >
-                <span>{displayMode === MODE_OPTIONS.TRANSLATION_ONLY ? 'Translation Only' : 'Bilingual'}</span>
+                <span>
+                  {displayMode === MODE_OPTIONS.TRANSLATION_ONLY ? 'Translation Only' : 'Bilingual'}
+                </span>
                 <span
                   className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${
                     displayMode === MODE_OPTIONS.TRANSLATION_ONLY ? 'bg-sky-400' : 'bg-slate-500'
@@ -279,26 +293,26 @@ function Popup() {
             </div>
           </div>
 
-          <label className="block text-sm font-medium text-slate-200">
+          <label className='block text-sm font-medium text-slate-200'>
             Volcengine API Key
             <input
-              type="password"
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
-              placeholder="vk-..."
+              type='password'
+              className='mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none'
+              placeholder='vk-...'
               value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              onChange={e => setApiKey(e.target.value)}
               required
             />
           </label>
 
-          <label className="block text-sm font-medium text-slate-200">
+          <label className='block text-sm font-medium text-slate-200'>
             Target Language
             <select
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:border-sky-500 focus:outline-none"
+              className='mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:border-sky-500 focus:outline-none'
               value={targetLanguage}
-              onChange={(e) => setTargetLanguage(e.target.value)}
+              onChange={e => setTargetLanguage(e.target.value)}
             >
-              {TARGET_OPTIONS.map((option) => (
+              {TARGET_OPTIONS.map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -307,105 +321,113 @@ function Popup() {
           </label>
 
           <button
-            type="submit"
-            className="w-full rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-70"
+            type='submit'
+            className='w-full rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-70'
             disabled={isSaving}
           >
             {isSaving ? 'Saving…' : 'Save Preferences'}
           </button>
         </form>
 
-      <div className="space-y-2">
-        <button
-          onClick={handleTranslatePage}
-          disabled={isTranslating || !extensionEnabled}
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
-        >
-          {isTranslating ? (
-            <>
-              <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-              Translating...
-            </>
-          ) : (
-            'Translate Current Page'
-          )}
-        </button>
+        <div className='space-y-2'>
+          <button
+            onClick={handleTranslatePage}
+            disabled={isTranslating || !extensionEnabled}
+            className='w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2'
+          >
+            {isTranslating ? (
+              <>
+                <span className='animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full'></span>
+                Translating...
+              </>
+            ) : (
+              'Translate Current Page'
+            )}
+          </button>
 
-        <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          className="rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-sky-500 hover:text-sky-200"
-          onClick={async () => {
-            try {
-              const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-              if (tab?.id) {
-                await chrome.tabs.sendMessage(tab.id, { type: 'UPDATE_DISPLAY_MODE', mode: 'original' });
-                setStatus({ type: 'success', message: '已切换到原文模式' });
-              }
-            } catch (error) {
-              console.error('Failed to switch to original mode:', error);
-              setStatus({ type: 'error', message: '切换失败，请重试' });
-            }
-          }}
-        >
-          显示原文
-        </button>
-        <button
-          type="button"
-          className="rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:border-sky-500 hover:text-white"
-          onClick={async () => {
-            try {
-              const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-              if (tab?.id) {
-                await chrome.tabs.sendMessage(tab.id, { type: 'UPDATE_DISPLAY_MODE', mode: 'bilingual' });
-                setStatus({ type: 'success', message: '已切换到双语模式' });
-              }
-            } catch (error) {
-              console.error('Failed to switch to bilingual mode:', error);
-              setStatus({ type: 'error', message: '切换失败，请重试' });
-            }
-          }}
-        >
-          双语模式
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          className="rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-sky-500 hover:text-sky-200"
-          onClick={handleClearCache}
-        >
-          Clear Cache
-        </button>
-        <button
-          type="button"
-          className="rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:border-sky-500 hover:text-white"
-          onClick={handleOpenTranslator}
-        >
-          Full Translator ↗
-        </button>
-      </div>
-
-        {status && (
-          <div className={`text-sm ${status.type === 'error' ? 'text-red-400' : 'text-emerald-400'} flex items-center gap-2`}>
-            <span>{status.message}</span>
-            {status.type === 'error' && status.message.includes('请刷新当前网页') && (
-              <button
-                onClick={async () => {
+          <div className='grid grid-cols-2 gap-2'>
+            <button
+              type='button'
+              className='rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-sky-500 hover:text-sky-200'
+              onClick={async () => {
+                try {
                   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
                   if (tab?.id) {
-                    chrome.tabs.reload(tab.id);
+                    await chrome.tabs.sendMessage(tab.id, {
+                      type: 'UPDATE_DISPLAY_MODE',
+                      mode: 'original',
+                    });
+                    setStatus({ type: 'success', message: '已切换到原文模式' });
                   }
-                }}
-                className="ml-2 px-2 py-1 text-xs bg-sky-600 hover:bg-sky-500 text-white rounded transition-colors"
-              >
-                刷新网页
-              </button>
-            )}
+                } catch (error) {
+                  console.error('Failed to switch to original mode:', error);
+                  setStatus({ type: 'error', message: '切换失败，请重试' });
+                }
+              }}
+            >
+              显示原文
+            </button>
+            <button
+              type='button'
+              className='rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:border-sky-500 hover:text-white'
+              onClick={async () => {
+                try {
+                  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                  if (tab?.id) {
+                    await chrome.tabs.sendMessage(tab.id, {
+                      type: 'UPDATE_DISPLAY_MODE',
+                      mode: 'bilingual',
+                    });
+                    setStatus({ type: 'success', message: '已切换到双语模式' });
+                  }
+                } catch (error) {
+                  console.error('Failed to switch to bilingual mode:', error);
+                  setStatus({ type: 'error', message: '切换失败，请重试' });
+                }
+              }}
+            >
+              双语模式
+            </button>
           </div>
-        )}
-      </div>
+
+          <div className='grid grid-cols-2 gap-2'>
+            <button
+              type='button'
+              className='rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-sky-500 hover:text-sky-200'
+              onClick={handleClearCache}
+            >
+              Clear Cache
+            </button>
+            <button
+              type='button'
+              className='rounded-md border border-slate-700 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:border-sky-500 hover:text-white'
+              onClick={handleOpenTranslator}
+            >
+              Full Translator ↗
+            </button>
+          </div>
+
+          {status && (
+            <div
+              className={`text-sm ${status.type === 'error' ? 'text-red-400' : 'text-emerald-400'} flex items-center gap-2`}
+            >
+              <span>{status.message}</span>
+              {status.type === 'error' && status.message.includes('请刷新当前网页') && (
+                <button
+                  onClick={async () => {
+                    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                    if (tab?.id) {
+                      chrome.tabs.reload(tab.id);
+                    }
+                  }}
+                  className='ml-2 px-2 py-1 text-xs bg-sky-600 hover:bg-sky-500 text-white rounded transition-colors'
+                >
+                  刷新网页
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -415,5 +437,5 @@ const root = createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <Popup />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

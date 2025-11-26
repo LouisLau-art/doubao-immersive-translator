@@ -10,19 +10,18 @@ const manifest = {
     default_title: 'Doubao Immersive Translator'
   },
   background: {
-    service_worker: 'src/background/index.js',
-    type: 'module'
+    service_worker: 'src/background/index.ts'
   },
   content_scripts: [
     {
       matches: ['<all_urls>'],
-      js: ['src/content/index.jsx'],
+      js: ['src/content/index.tsx'],
       run_at: 'document_idle'
     }
   ],
   web_accessible_resources: [
     {
-      resources: ['assets/*', 'src/content/*', 'src/popup/*'],
+      resources: ['assets/*', 'src/content/*', 'src/popup/*', 'src/translator/*'],
       matches: ['<all_urls>']
     }
   ],

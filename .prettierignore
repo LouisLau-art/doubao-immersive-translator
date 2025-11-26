@@ -1,0 +1,9 @@
+dist/
+node_modules/
+*.config.js
+*.config.cjs
+vite.config.js
+postcss.config.cjs
+tailwind.config.cjs
+package-lock.json
+*.md
