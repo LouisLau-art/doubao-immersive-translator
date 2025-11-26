@@ -1,4 +1,6 @@
 // src/background/doubaoService.ts
+import { v4 as uuidv4 } from 'uuid';
+import { captureError } from '../utils/sentry';
 import type { DoubaoApiResponse } from '../types';
 
 const DOUBAO_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/responses';
@@ -13,6 +15,9 @@ const DEFAULT_MODEL = 'doubao-seed-translation-250915';
 export function sanitizeText(text: string): string {
   // 1. Truncate text longer than 800 characters (safe for 1k token limit)
   let sanitized = text.length > 800 ? text.substring(0, 800) : text;
+  if (text.length > 800) {
+    console.warn(`Text truncated from ${text.length} to 800 characters for API compatibility`);
+  }
 
   // 2. Remove non-printable control characters (keep newline and tab)
   sanitized = sanitized.replace(
@@ -34,10 +39,11 @@ export function sanitizeText(text: string): string {
  * 严格遵循单轮对话、单 Input Item 的规范
  */
 export async function translateText(
-  text: string, 
-  apiKey: string, 
+  text: string,
+  apiKey: string,
   targetLanguage: string = 'zh'
 ): Promise<string> {
+  const requestId = uuidv4();
   // 1. 基础校验
   if (!text || !text.trim()) {
     return '';
@@ -84,10 +90,39 @@ export async function translateText(
 
     // 5. 处理 HTTP 错误
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('FAILED TEXT:', sanitizedText.substring(0, 100) + '...');
-      console.error('FAILED PAYLOAD:', JSON.stringify(payload));
-      let errorMessage = `Doubao API error: ${response.status}`;
+      let errorText = await response.text(); // 获取错误响应文本
+      let errorMessage = `HTTP error! status: ${response.status}`; // 创建错误消息
+      const requestParams = {
+        text: sanitizedText.slice(0, 100) + '...',
+        apiKey: '***',
+        targetLanguage: normalizedTargetLanguage,
+        requestId
+      };
+      const responseDetails = {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText.slice(0, 200) + '...'
+      };
+      console.error('API_ERROR', {
+        requestId,
+        errorType: 'API_ERROR',
+        errorMessage,
+        requestParams,
+        responseDetails
+      });
+
+      // Add status code specific messages
+      switch (response.status) {
+        case 401:
+          errorMessage += ' - Unauthorized (invalid API key)';
+          break;
+        case 429:
+          errorMessage += ' - Rate limit exceeded';
+          break;
+        case 500:
+          errorMessage += ' - Server error';
+          break;
+      }
 
       try {
         // 尝试解析详细的 JSON 错误信息
@@ -99,6 +134,8 @@ export async function translateText(
         errorMessage += ` ${errorText}`;
       }
 
+      captureError(new Error(errorMessage), { requestId }, true, requestId);
+      captureError(new Error(errorMessage), { requestId }, true, requestId);
       throw new Error(errorMessage);
     }
 
@@ -110,6 +147,11 @@ export async function translateText(
     // 情况 A: 标准 V3 响应 (通常在这里)
     if (data.choices && data.choices.length > 0) {
       translation = data.choices[0].message?.content || '';
+      console.log('API_SUCCESS', {
+        requestId,
+        textLength: sanitizedText.length,
+        targetLanguage: normalizedTargetLanguage
+      });
       if (translation) {
         // Clean AI hallucinations
         translation = translation.replace(/^(注：|Note:|Warning:).*$/gm, '');
@@ -136,8 +178,23 @@ export async function translateText(
 
     return translation;
   } catch (error) {
-    console.error('Translation Request Failed:', error);
+    let errorType = 'Unknown error';
+    let errorMessage = 'An unknown error occurred';
+    
+    if (error instanceof Error) {
+      if (error instanceof TypeError) {
+        errorType = 'Network error';
+      } else if (error.message.includes('Invalid response format')) {
+        errorType = 'Parsing error';
+      } else if (error.message.startsWith('Doubao API error')) {
+        errorType = 'API error';
+      }
+      errorMessage = `${errorType}: ${error.message}`;
+    }
+    
+    console.error('Translation Request Failed:', errorMessage);
     console.error('FAILED PAYLOAD TEXT:', sanitizedText);
-    throw error;
+    captureError(new Error(errorMessage), { requestId }, true, requestId);
+    throw new Error(errorMessage);
   }
 }

@@ -1,0 +1,40 @@
+{
+  "app": {
+    "title": "豆包翻译器",
+    "description": "沉浸式翻译体验",
+    "header_title": "ARK 豆包翻译器",
+    "header_subtitle": "沉浸式双栏体验 · Markdown & KaTeX 支持 · 火山引擎豆包"
+  },
+  "translation": {
+    "source": "源语言",
+    "target": "目标语言",
+    "result": "翻译结果",
+    "placeholder": "输入要翻译的文本...",
+    "char_count": "字符数",
+    "font_size": "字体大小",
+    "clear": "清空",
+    "translating": "翻译中…",
+    "copied": "已复制到剪贴板",
+    "copy_failed": "复制失败，请检查权限"
+  },
+  "history": {
+    "title": "历史记录",
+    "empty": "暂无历史记录",
+    "reuse": "再次翻译"
+  },
+  "auto_translate": {
+    "title": "自动翻译",
+    "enabled": "已启用"
+  },
+  "status": {
+    "label": "状态："
+  },
+  "powered_by": "由火山引擎豆包提供支持",
+  "error": {
+    "boundary": "出错了，请刷新页面重试"
+  },
+  "languages": {
+    "en": "英语",
+    "zh": "中文"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "app": {
+    "title": "Doubao Translator",
+    "description": "Immersive translation experience",
+    "header_title": "ARK Doubao Translator",
+    "header_subtitle": "Immersive dual-column experience · Markdown & KaTeX support · Volcengine Doubao"
+  },
+  "translation": {
+    "source": "Source Language",
+    "target": "Target Language",
+    "result": "Translation Result",
+    "placeholder": "Enter text to translate...",
+    "char_count": "Characters",
+    "font_size": "Font Size",
+    "clear": "Clear",
+    "translating": "Translating…",
+    "copied": "Copied to clipboard",
+    "copy_failed": "Copy failed, please check permissions"
+  },
+  "history": {
+    "title": "History",
+    "empty": "No history yet",
+    "reuse": "Reuse Translation"
+  },
+  "auto_translate": {
+    "title": "Auto Translate",
+    "enabled": "Enabled"
+  },
+  "status": {
+    "label": "Status:"
+  },
+  "powered_by": "Powered by Volcengine Doubao",
+  "error": {
+    "boundary": "Something went wrong. Please refresh the page."
+  },
+  "languages": {
+    "en": "English",
+    "zh": "Chinese"
+  }
+}

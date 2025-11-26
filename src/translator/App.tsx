@@ -1,5 +1,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -97,6 +98,7 @@ const sendTranslationRequest = async (text: string, targetLanguage: string): Pro
 };
 
 const App: React.FC = () => {
+  const { t } = useTranslation();
   const [sourceLang, setSourceLang] = useState<string>('auto');
   const [targetLang, setTargetLang] = useState<string>('zh');
   const [inputText, setInputText] = useState<string>('');
@@ -276,7 +278,7 @@ const App: React.FC = () => {
             <section className='input-section flex min-w-0 flex-1 flex-col border-r border-[#333] p-6'>
               <div className='section-header mb-6 flex items-center justify-between border-b border-[#333] pb-4'>
                 <div className='language-selector flex items-center gap-4 text-sm'>
-                  <span className='lang-label text-base font-semibold'>源语言</span>
+                  <span className='lang-label text-base font-semibold'>{t('translation.source')}</span>
                   <select
                     id='sourceLang'
                     className='rounded-lg border border-[#333] bg-[#2d2d2d] px-4 py-2 text-sm focus:border-[#667eea] focus:outline-none'
@@ -342,7 +344,7 @@ const App: React.FC = () => {
             <section className='output-section flex min-w-0 flex-1 flex-col p-6'>
               <div className='section-header mb-6 flex items-center justify-between border-b border-[#333] pb-4'>
                 <div className='language-selector flex items-center gap-4 text-sm'>
-                  <span className='lang-label text-base font-semibold'>目标语言</span>
+                  <span className='lang-label text-base font-semibold'>{t('translation.target')}</span>
                   <select
                     id='targetLang'
                     className='rounded-lg border border-[#333] bg-[#2d2d2d] px-4 py-2 text-sm focus:border-[#667eea] focus:outline-none'
@@ -399,12 +401,12 @@ const App: React.FC = () => {
           <section className='history-section border-t border-[#333] bg-[#1e1e1e] px-8 py-8'>
             <details className='history-details' open>
               <summary className='flex cursor-pointer items-center gap-3 text-lg font-semibold text-white'>
-                历史记录
+                {t('history.title')}
               </summary>
               <div
                 className={`history-list mt-6 flex flex-col gap-4 ${history.length === 0 ? 'empty' : ''}`}
               >
-                {history.length === 0 && <p className='history-empty text-sm'>暂无历史记录</p>}
+                {history.length === 0 && <p className='history-empty text-sm'>{t('history.empty')}</p>}
                 {history.map(entry => (
                   <article
                     key={entry.id}
@@ -432,7 +434,7 @@ const App: React.FC = () => {
                         className='history-reuse'
                         onClick={() => handleReuseHistory(entry)}
                       >
-                        再次翻译
+                        {t('history.reuse')}
                       </button>
                     </div>
                   </article>
@@ -444,18 +446,18 @@ const App: React.FC = () => {
           <footer className='status-bar border-t border-[#333] bg-[#1e1e1e] px-8 py-4 text-sm text-[#e0e0e0]'>
             <div className='flex flex-wrap items-center justify-between gap-6'>
               <div className='auto-translate flex items-center gap-3'>
-                <span className='font-semibold'>自动翻译</span>
+                <span className='font-semibold'>{t('auto_translate.title')}</span>
                 <div className='inline-flex items-center gap-2 rounded-full border border-[#333] bg-[#2d2d2d] px-3 py-1 text-xs text-[#a0a0a0]'>
                   <span className='relative inline-flex h-5 w-10 items-center rounded-full bg-gradient-to-r from-[#667eea] to-[#764ba2]'>
                     <span className='ml-auto mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-[#667eea]'>
                       ON
                     </span>
                   </span>
-                  已启用
+                  {t('auto_translate.enabled')}
                 </div>
               </div>
               <div className='font-size-control flex items-center gap-3 text-sm'>
-                状态：<span className='text-white'>{statusMessage}</span>
+                {t('status.label')}<span className='text-white'>{statusMessage}</span>
               </div>
               <div className='text-xs uppercase tracking-[0.4em] text-[#9aa0a6]'>
                 Powered by Volcengine Doubao
