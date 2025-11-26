@@ -381,8 +381,8 @@ const App: React.FC = () => {
                 )}
 
                 <div
-                  className='markdown-body min-h-[420px] rounded-lg border-2 border-[#333] bg-[#252525] p-5 text-base leading-relaxed text-[#e0e0e0] shadow-[0_12px_35px_rgba(0,0,0,0.45)]'
-                  style={{ ...inputFontStyle }}
+                  className='markdown-body rounded-lg border-2 border-[#333] bg-[#252525] p-5 text-base leading-relaxed text-[#e0e0e0] shadow-[0_12px_35px_rgba(0,0,0,0.45)]'
+                  style={inputFontStyle}
                 >
                   <ReactMarkdown
                     remarkPlugins={[remarkMath]}

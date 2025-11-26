@@ -153,6 +153,41 @@ body {
   max-height: none;
 }
 
+/* 确保译文框容器有固定高度和滚动 */
+.output-section .relative.flex-1 {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+/* 隐藏滚动条但保持滚动功能 */
+.markdown-body::-webkit-scrollbar {
+  width: 0;
+  display: none;
+}
+
+.markdown-body {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* 确保译文框容器有固定高度和滚动 */
+.output-section .relative.flex-1 {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+/* 确保译文框内容区域正确滚动 */
+.output-section .markdown-body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
 /* 确保文本区域也能正确滚动 */
 .text-area {
   overflow-y: auto;

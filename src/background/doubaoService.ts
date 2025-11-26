@@ -90,7 +90,7 @@ export async function translateText(
 
     // 5. 处理 HTTP 错误
     if (!response.ok) {
-      let errorText = await response.text(); // 获取错误响应文本
+      const errorText = await response.text(); // 获取错误响应文本
       let errorMessage = `HTTP error! status: ${response.status}`; // 创建错误消息
       const requestParams = {
         text: sanitizedText.slice(0, 100) + '...',
@@ -134,7 +134,6 @@ export async function translateText(
         errorMessage += ` ${errorText}`;
       }
 
-      captureError(new Error(errorMessage), { requestId }, true, requestId);
       captureError(new Error(errorMessage), { requestId }, true, requestId);
       throw new Error(errorMessage);
     }

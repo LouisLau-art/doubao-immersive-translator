@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>译文框滚动测试</title>
+    <style>
+        body {
+            background: #1e1e1e;
+            color: #e0e0e0;
+            font-family: 'PingFang SC', 'Noto Sans SC', 'Maple Mono NF CN', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .test-box {
+            background: #252525;
+            border: 2px solid #333;
+            padding: 20px;
+            border-radius: 8px;
+            min-height: 400px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            /* 隐藏滚动条 */
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        .test-box::-webkit-scrollbar {
+            width: 0;
+            display: none;
+        }
+        .test-content {
+            height: 800px;
+            background: linear-gradient(180deg, #667eea, #764ba2);
+            color: white;
+            text-align: center;
+            line-height: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-box">
+        <h2>译文框滚动测试</h2>
+        <div class="test-content">
+            <h3>测试内容 - 应该能滚动但看不到滚动条</h3>
+        </div>
+    </div>
+</body>
+</html>

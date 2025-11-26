@@ -31,6 +31,20 @@ export default [
           jsx: true
         },
         project: './tsconfig.json'
+      },
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+        chrome: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        fetch: 'readonly',
+        navigator: 'readonly',
+        performance: 'readonly'
       }
     },
     plugins: {
