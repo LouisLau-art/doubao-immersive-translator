@@ -12,7 +12,11 @@ Doubao Immersive Translator delivers inline, context-aware translations for any 
 ## Features
 
 - ✨ **Immersive Web Translation** – intelligent block detection, Shadow DOM rendering, GitHub-aware filters (skip code, usernames, repo slugs).
-- 🖥️ **Standalone Translator Page** – split-view editor with Markdown/KaTeX preview, font slider, copy/clear controls, and chrome.storage history.
+- 🖥️ **Standalone Translator Page** – split-view editor with:
+  - Markdown/KaTeX preview
+  - Font slider, copy/clear controls
+  - chrome.storage history
+  - **Adaptive height** – input/output boxes grow with content (min 200px, no scrollbars)
 - 📄 **Long Markdown Translation** – Automatic chunking for long documents, preserves Markdown formatting, concurrency control to avoid API limits.
 - ⚡ **High Performance** – concurrent request queue (15 workers) with local caching to avoid 429s and reduce API spend.
 - 🧰 **Modern Stack** – React + Vite + crxjs + TailwindCSS + Manifest V3.

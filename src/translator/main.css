@@ -37,7 +37,7 @@ html {
   flex: 1;
   position: relative;
   min-height: 0;
-  max-height: calc(100vh - 200px); /* 减去头部和底部状态栏的高度 */
+  max-height: none !important; /* Remove fixed max-height */
 }
 
 .input-section,
@@ -47,6 +47,7 @@ html {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  max-width: 100%; /* Allow full width growth */
 }
 
 /* 确保输出区域容器正确计算高度 */
@@ -155,12 +156,11 @@ html {
   border-top: 1px solid var(--border-color);
 }
 
-/* 修复输出区域的滚动条问题 - 核心修复 */
+/* 确保译文区域自适应高度 */
 .markdown-body {
-  overflow-y: auto;
-  overflow-x: hidden;
-  flex: 1;
-  min-height: 0;
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+  min-height: 200px !important;
   max-height: none;
 }
 
@@ -172,16 +172,6 @@ html {
   flex: 1;
 }
 
-/* 隐藏滚动条但保持滚动功能 */
-.markdown-body::-webkit-scrollbar {
-  width: 0 !important;
-  display: none !important;
-}
-
-.markdown-body {
-  -ms-overflow-style: none !important;  /* IE and Edge */
-  scrollbar-width: none !important;  /* Firefox */
-}
 
 /* 确保译文框容器有固定高度和滚动 */
 .output-section .relative.flex-1 {
@@ -191,29 +181,19 @@ html {
   flex: 1;
 }
 
-/* Hide text area scrollbar */
-.text-area::-webkit-scrollbar {
-  width: 0 !important;
-  display: none !important;
-}
 
-.text-area {
-  -ms-overflow-style: none !important;  /* IE and Edge */
-  scrollbar-width: none !important;  /* Firefox */
-}
-
-/* 确保译文框内容区域正确滚动 */
+/* 确保译文框内容区域自适应高度 */
 .output-section .markdown-body {
-  overflow-y: auto;
-  overflow-x: hidden;
-  flex: 1;
-  min-height: 0;
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+  min-height: 200px !important;
 }
 
-/* 确保文本区域也能正确滚动 */
+/* 确保文本区域自适应高度 */
 .text-area {
-  overflow-y: auto;
-  min-height: 0;
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+  min-height: 200px !important;
 }
 
 
