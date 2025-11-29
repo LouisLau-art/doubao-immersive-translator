@@ -20,6 +20,17 @@ body {
   color: var(--text-color);
 }
 
+/* Hide global scrollbar */
+html::-webkit-scrollbar {
+  width: 0;
+  display: none;
+}
+
+html {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 /* 确保整个翻译区域正确计算高度 */
 .translation-area {
   display: flex;
@@ -163,13 +174,13 @@ body {
 
 /* 隐藏滚动条但保持滚动功能 */
 .markdown-body::-webkit-scrollbar {
-  width: 0;
-  display: none;
+  width: 0 !important;
+  display: none !important;
 }
 
 .markdown-body {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
 }
 
 /* 确保译文框容器有固定高度和滚动 */
@@ -178,6 +189,17 @@ body {
   flex-direction: column;
   min-height: 0;
   flex: 1;
+}
+
+/* Hide text area scrollbar */
+.text-area::-webkit-scrollbar {
+  width: 0 !important;
+  display: none !important;
+}
+
+.text-area {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
 }
 
 /* 确保译文框内容区域正确滚动 */
@@ -194,57 +216,4 @@ body {
   min-height: 0;
 }
 
-.markdown-body::-webkit-scrollbar {
-  width: 8px;
-}
 
-.markdown-body::-webkit-scrollbar-track {
-  background: #2d2d2d;
-  border-radius: 4px;
-}
-
-.markdown-body::-webkit-scrollbar-thumb {
-  background: #667eea;
-  border-radius: 4px;
-}
-
-.markdown-body::-webkit-scrollbar-thumb:hover {
-  background: #764ba2;
-}
-/* Text area scrollbar */
-.text-area::-webkit-scrollbar {
-  width: 8px;
-}
-
-.text-area::-webkit-scrollbar-track {
-  background: #2d2d2d;
-  border-radius: 4px;
-}
-
-.text-area::-webkit-scrollbar-thumb {
-  background: #667eea;
-  border-radius: 4px;
-}
-
-.text-area::-webkit-scrollbar-thumb:hover {
-  background: #764ba2;
-}
-
-/* Global scrollbar */
-html::-webkit-scrollbar {
-  width: 8px;
-}
-
-html::-webkit-scrollbar-track {
-  background: #2d2d2d;
-  border-radius: 4px;
-}
-
-html::-webkit-scrollbar-thumb {
-  background: #667eea;
-  border-radius: 4px;
-}
-
-html::-webkit-scrollbar-thumb:hover {
-  background: #764ba2;
-}

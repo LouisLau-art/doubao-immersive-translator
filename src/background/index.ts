@@ -1,5 +1,6 @@
 // src/background/index.ts
 import { translateText } from './doubaoService.js';
+import { translateLongText } from './chunkTranslation.js';
 import type { TranslationRequest, TranslationResponse } from '../types';
 
 // 1. 【关键】添加启动日志，证明 Service Worker 活了
@@ -96,13 +97,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       // 入队
-      enqueueTranslation({
-        text,
-        targetLanguage,
-        apiKey,
-        cacheKey,
-        sendResponse, // 将 sendResponse 句柄传给队列，稍后调用
-      });
+      // 使用分块翻译，并传递当前队列的最大并发数
+      translateLongText(text, apiKey, targetLanguage, MAX_CONCURRENT_REQUESTS)
+        .then(translation => {
+          cache.set(cacheKey, translation);
+          sendResponse({ success: true, translation, cached: false });
+        })
+        .catch(error => {
+          sendResponse({ success: false, error: error.message || 'Translation failed' });
+        });
     });
 
     return true; // 【关键】保持通道开启，等待异步处理

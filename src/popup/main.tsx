@@ -44,7 +44,11 @@ function Popup() {
   const [displayMode, setDisplayMode] = useState(MODE_OPTIONS.BILINGUAL);
   const [extensionEnabled, setExtensionEnabled] = useState(true);
   const [autoTranslate, setAutoTranslate] = useState(false);
-  const [status, setStatus] = useState(null);
+  interface Status {
+    type: 'success' | 'error';
+    message: string;
+  }
+  const [status, setStatus] = useState<Status | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
 
@@ -67,7 +71,7 @@ function Popup() {
     );
   }, []);
 
-  const handleSave = async event => {
+  const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsSaving(true);
     setStatus(null);
@@ -101,7 +105,7 @@ function Popup() {
       // Refined internal page check
       const forbiddenProtocols = ['chrome://', 'edge://', 'about:', 'file://', 'extensions://'];
       const isForbiddenPage =
-        tab.url && forbiddenProtocols.some(protocol => tab.url.startsWith(protocol));
+        tab.url && forbiddenProtocols.some(protocol => tab.url?.startsWith(protocol));
 
       // If it's a forbidden page or URL is not available, show error
       if (isForbiddenPage || !tab.url) {
@@ -126,8 +130,8 @@ function Popup() {
     } catch (error) {
       console.error('Translation trigger failed:', error);
       const isConnectionError =
-        error.message.includes('Receiving end does not exist') ||
-        error.message.includes('Could not establish connection');
+        (error as Error).message.includes('Receiving end does not exist') ||
+        (error as Error).message.includes('Could not establish connection');
 
       // User-friendly error message for connection issues
       if (isConnectionError) {
@@ -176,7 +180,7 @@ function Popup() {
           // Reload current tab to refresh translations
           chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
             if (tabs[0]) {
-              chrome.tabs.reload(tabs[0].id);
+              if (tabs[0].id) chrome.tabs.reload(tabs[0].id);
             }
           });
         } else {
@@ -190,7 +194,7 @@ function Popup() {
   };
 
   return (
-    <div className='min-h-[320px] bg-slate-900 text-white'>
+    <div className='bg-slate-900 text-white'>
       <div className='p-4 space-y-4'>
         <div>
           <h1 className='text-xl font-semibold'>Doubao Immersive Translator</h1>
@@ -433,7 +437,9 @@ function Popup() {
   );
 }
 
-const root = createRoot(document.getElementById('root'));
+const rootElement = document.getElementById('root');
+if (!rootElement) throw new Error('Failed to find root element');
+const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <Popup />

@@ -5,8 +5,8 @@ import manifest from './src/manifest.config.js'
 
 export default defineConfig({
   plugins: [
-    react(),
     crx({ manifest }),
+    react(),
   ],
   server: {
     port: 5173,

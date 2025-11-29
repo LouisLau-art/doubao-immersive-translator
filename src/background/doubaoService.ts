@@ -13,26 +13,21 @@ const DEFAULT_MODEL = 'doubao-seed-translation-250915';
  * @throws If text becomes empty after sanitization
  */
 export function sanitizeText(text: string): string {
-  // 1. Truncate text longer than 800 characters (safe for 1k token limit)
-  let sanitized = text.length > 800 ? text.substring(0, 800) : text;
-  if (text.length > 800) {
-    console.warn(`Text truncated from ${text.length} to 800 characters for API compatibility`);
-  }
-
-  // 2. Remove non-printable control characters (keep newline and tab)
-  sanitized = sanitized.replace(
+  // Remove non-printable control characters (keep newline and tab)
+  let sanitized = text.replace(
     // eslint-disable-next-line no-control-regex
     /[\0\x01\x02\x03\x04\x05\x06\x07\x0B\x0C\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F]/g,
     '',
   );
 
-  // 3. Check if text is empty after sanitization
+  // Check if text is empty after sanitization
   if (!sanitized.trim()) {
     throw new Error('Text is empty after sanitization');
   }
 
   return sanitized;
 }
+
 
 /**
  * 调用火山引擎豆包翻译模型 (Seed Translation)

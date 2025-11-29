@@ -5,4 +5,6 @@
 :host,
 body {
   min-width: 320px;
+  height: auto;
+  max-height: none;
 }
