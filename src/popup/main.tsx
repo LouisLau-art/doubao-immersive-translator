@@ -445,3 +445,15 @@ root.render(
     <Popup />
   </React.StrictMode>,
 );
+
+// Set the popup height to match the content exactly
+setTimeout(() => {
+  const rootElement = document.getElementById('root');
+  if (rootElement) {
+    const contentHeight = rootElement.scrollHeight;
+    document.body.style.height = `${contentHeight}px`;
+    // Also set width if needed
+    const contentWidth = rootElement.scrollWidth;
+    document.body.style.width = `${contentWidth}px`;
+  }
+}, 100); // Give React time to render completely

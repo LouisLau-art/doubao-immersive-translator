@@ -4,7 +4,13 @@
 
 :host,
 body {
-  min-width: 320px;
+  min-width: 340px;
+  min-height: fit-content;
   height: auto;
-  max-height: none;
+  max-height: 1000px;
+  overflow: visible;
+}
+
+#root {
+  height: fit-content;
 }
