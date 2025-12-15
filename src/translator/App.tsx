@@ -311,7 +311,7 @@ const App: React.FC = () => {
                     textarea.style.height = Math.max(textarea.scrollHeight, 420) + 'px';
                   }
                 }}
-                className='text-area min-h-[420px] w-full flex-1 resize-none rounded-lg border-2 border-[#333] bg-[#2d2d2d] p-5 text-base text-[#e0e0e0] placeholder:text-[#888] shadow-[0_12px_35px_rgba(0,0,0,0.45)] focus:border-[#667eea] focus:outline-none'
+                className='text-area min-h-[420px] w-full resize-none rounded-lg border-2 border-[#333] bg-[#2d2d2d] p-5 text-base text-[#e0e0e0] placeholder:text-[#888] shadow-[0_12px_35px_rgba(0,0,0,0.45)] focus:border-[#667eea] focus:outline-none'
                 placeholder='请输入要翻译的文本...\n\n提示：输入文本后 0.5s 内自动翻译，无需按钮。\n支持 LaTeX 数学公式：$...$ 行内，$$...$$ 块级。'
                 value={inputText}
                 onChange={event => {

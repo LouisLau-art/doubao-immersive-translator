@@ -191,11 +191,7 @@ html {
 
 /* 确保文本区域自适应高度 */
 .text-area {
-  overflow-y: hidden !important;
-  overflow-x: hidden !important;
-  min-height: 420px !important;
   resize: none !important;
-  box-sizing: border-box !important;
 }
 
 
